@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rag_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+openai:
+  api-key: ${OPENAI_API_KEY}
+  default-model: gpt-4o-mini
+  pricing:
+    usd-to-jpy: 150.0
+    models:
+      gpt-4o:
+        input-usd-per1m-tokens: 2.50
+        output-usd-per1m-tokens: 10.00
+      gpt-4o-mini:
+        input-usd-per1m-tokens: 0.15
+        output-usd-per1m-tokens: 0.60
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics

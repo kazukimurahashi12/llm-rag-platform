@@ -1,0 +1,126 @@
+openapi: 3.0.3
+info:
+  title: Management Advice API
+  description: |-
+    Management Support AI "ONBOARD-Core" のマネジメント支援API。
+    単なるチャットUIではなく、エンタープライズ実運用を前提に、
+    高精度（RAG）、高信頼（ガードレール）、高透明性（コスト・監査）を備えた
+    マネジメント支援AIバックエンドとして利用する。
+  version: 1.0.0
+
+paths:
+  /v1/management/advice:
+    post:
+      operationId: getAdvice
+      summary: マネジメントアドバイスを生成する
+      description: |-
+        ONBOARD-Core の中核API。
+        マネージャーの相談内容に対し、社内ガイドラインや運用ポリシーに沿った
+        実践的なアドバイスを生成することを目的とする。
+        今後の RAG、PII 保護、監査ログ、コスト可視化の導入を前提とした契約とする。
+      tags:
+        - Advice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdviceRequest'
+      responses:
+        '200':
+          description: アドバイス生成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdviceResponse'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    AdviceRequest:
+      type: object
+      required:
+        - memberContext
+      properties:
+        memberContext:
+          $ref: '#/components/schemas/MemberContext'
+        setting:
+          $ref: '#/components/schemas/AdviceSetting'
+
+    MemberContext:
+      type: object
+      required:
+        - situation
+        - targetGoal
+      properties:
+        situation:
+          type: string
+          description: メンバーの現在の状況
+          example: 最近、週報の提出が遅れがちで、チームへの共有が漏れている。
+        targetGoal:
+          type: string
+          description: 達成したい目標
+          example: モチベーションを下げずに、報告の重要性を理解させたい。
+
+    AdviceSetting:
+      type: object
+      properties:
+        tone:
+          type: string
+          description: 回答のトーン
+          default: empathetic
+          example: empathetic
+        model:
+          type: string
+          description: 使用するLLMモデル名
+          example: gpt-4o-mini
+
+    AdviceResponse:
+      type: object
+      required:
+        - advice
+        - usage
+      properties:
+        advice:
+          type: string
+          description: 生成されたアドバイス
+        usage:
+          $ref: '#/components/schemas/UsageInfo'
+
+    UsageInfo:
+      type: object
+      required:
+        - model
+        - promptTokens
+        - completionTokens
+        - totalTokens
+        - estimatedCostJpy
+      properties:
+        model:
+          type: string
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+        totalTokens:
+          type: integer
+        estimatedCostJpy:
+          type: number
+          format: double
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
