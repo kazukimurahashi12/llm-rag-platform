@@ -44,4 +44,14 @@ class ApiExceptionHandler {
                 .details(listOf(ex.responseBodyAsString.take(500)))
         )
     }
+
+    @ExceptionHandler(ResourceNotFoundException::class)
+    fun handleResourceNotFoundException(ex: ResourceNotFoundException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            ErrorResponse()
+                .status(HttpStatus.NOT_FOUND.value())
+                .message(ex.message)
+                .details(emptyList())
+        )
+    }
 }
