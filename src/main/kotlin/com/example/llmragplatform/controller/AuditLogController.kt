@@ -1,5 +1,6 @@
 package com.example.llmragplatform.controller
 
+import com.example.llmragplatform.config.SecurityProperties
 import com.example.llmragplatform.generated.api.AuditApi
 import com.example.llmragplatform.generated.model.AuditLogDetailResponse
 import com.example.llmragplatform.generated.model.AuditLogListResponse
@@ -12,6 +13,7 @@ import java.time.OffsetDateTime
 
 @RestController
 class AuditLogController(
+    private val securityProperties: SecurityProperties,
     private val auditLogQueryService: AuditLogQueryService,
 ) : AuditApi {
 
@@ -37,7 +39,7 @@ class AuditLogController(
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     override fun getAuditLogDetail(auditLogId: Long): ResponseEntity<AuditLogDetailResponse> {
         val authentication = SecurityContextHolder.getContext().authentication
-        val isAdmin = authentication.authorities.any { it.authority == "ROLE_ADMIN" }
+        val isAdmin = authentication.name == securityProperties.admin.username
         return ResponseEntity.ok(auditLogQueryService.getAuditLogDetail(auditLogId, isAdmin))
     }
 }
