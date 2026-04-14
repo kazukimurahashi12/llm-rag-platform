@@ -26,6 +26,29 @@ openai:
         input-usd-per1m-tokens: 0.15
         output-usd-per1m-tokens: 0.60
 
+rag:
+  top-k: ${RAG_TOP_K:3}
+  vector-search-enabled: ${RAG_VECTOR_SEARCH_ENABLED:false}
+  embedding-model: ${RAG_EMBEDDING_MODEL:text-embedding-3-small}
+  embedding-dimensions: ${RAG_EMBEDDING_DIMENSIONS:1536}
+
+app:
+  reindex-jobs:
+    cleanup-enabled: ${REINDEX_JOBS_CLEANUP_ENABLED:true}
+    retention: ${REINDEX_JOBS_RETENTION:7d}
+    cleanup-interval: ${REINDEX_JOBS_CLEANUP_INTERVAL:1h}
+  security:
+    admin:
+      username: ${AUDIT_ADMIN_USERNAME:admin}
+      password: ${AUDIT_ADMIN_PASSWORD:change-me}
+      roles:
+        - ADMIN
+    operator:
+      username: ${AUDIT_OPERATOR_USERNAME:operator}
+      password: ${AUDIT_OPERATOR_PASSWORD:change-operator}
+      roles:
+        - OPERATOR
+
 management:
   endpoints:
     web:
