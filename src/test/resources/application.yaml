@@ -1,0 +1,16 @@
+spring:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  task:
+    scheduling:
+      enabled: false
+
+openai:
+  api-key: test-key
+  default-model: gpt-4o-mini
+
+rag:
+  vector-search-enabled: false
