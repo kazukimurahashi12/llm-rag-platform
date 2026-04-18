@@ -20,11 +20,13 @@ import { PageScaffold } from "../components/layout/PageScaffold";
 import { EmptyState, ErrorState, LoadingState } from "../components/shared/FeedbackState";
 import { SectionCard } from "../components/shared/SectionCard";
 import { StatusBadge } from "../components/shared/StatusBadge";
+import { getStoredAuthSession } from "../lib/auth";
 import { formatDateTime } from "../lib/format";
 
 export function ReindexJobsPage() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
+  const authSession = getStoredAuthSession();
 
   const listQuery = useQuery({
     queryKey: ["reindex-jobs", status],
@@ -36,7 +38,8 @@ export function ReindexJobsPage() {
         sortDirection: "desc",
         status: status || undefined,
       }),
-    refetchInterval: 5000,
+    enabled: Boolean(authSession),
+    refetchInterval: authSession ? 5000 : false,
   });
 
   const retryMutation = useMutation({
@@ -55,40 +58,46 @@ export function ReindexJobsPage() {
 
   return (
     <PageScaffold
-      title="Reindex Jobs"
-      description="Monitor asynchronous embedding refresh jobs with polling, filtering, retry, and delete actions."
+      title="再インデックス"
+      description="非同期の埋め込み再生成ジョブを監視し、絞り込み、再試行、削除を行います。"
     >
-      <SectionCard title="Job filters" description="Use status to focus on failed or in-flight jobs.">
-        <TextField select label="Status" value={status} onChange={(event) => setStatus(event.target.value)} sx={{ width: 280 }}>
-          <MenuItem value="">All</MenuItem>
-          <MenuItem value="QUEUED">QUEUED</MenuItem>
-          <MenuItem value="RUNNING">RUNNING</MenuItem>
-          <MenuItem value="COMPLETED">COMPLETED</MenuItem>
-          <MenuItem value="FAILED">FAILED</MenuItem>
+      <SectionCard title="ジョブ絞り込み" description="状態で絞り込むと、失敗中や実行中のジョブを追いやすくなります。">
+        <TextField select label="状態" value={status} onChange={(event) => setStatus(event.target.value)} sx={{ width: 280 }}>
+          <MenuItem value="">すべて</MenuItem>
+          <MenuItem value="QUEUED">待機中</MenuItem>
+          <MenuItem value="RUNNING">実行中</MenuItem>
+          <MenuItem value="COMPLETED">完了</MenuItem>
+          <MenuItem value="FAILED">失敗</MenuItem>
         </TextField>
       </SectionCard>
 
-      <SectionCard title="Job history" description="Polling every 5 seconds keeps active jobs visible without manual refresh.">
-        {retryMutation.isSuccess ? <Alert severity="success">Retry job accepted.</Alert> : null}
-        {deleteMutation.isSuccess ? <Alert severity="success">Job deleted.</Alert> : null}
-        {listQuery.isLoading ? <LoadingState label="Loading reindex jobs..." /> : null}
+      <SectionCard title="ジョブ履歴" description="5秒ごとのポーリングで、実行中ジョブを手動更新なしで追跡します。">
+        {!authSession ? (
+          <EmptyState
+            title="サインインが必要です"
+            body="ヘッダーから JWT サインインしてから、保護された再インデックス情報を読み込んでください。"
+          />
+        ) : null}
+        {retryMutation.isSuccess ? <Alert severity="success">再試行ジョブを受け付けました。</Alert> : null}
+        {deleteMutation.isSuccess ? <Alert severity="success">ジョブを削除しました。</Alert> : null}
+        {listQuery.isLoading ? <LoadingState label="再インデックスジョブを読み込み中..." /> : null}
         {listQuery.isError ? <ErrorState message={getApiErrorMessage(listQuery.error)} /> : null}
         {retryMutation.isError ? <ErrorState message={getApiErrorMessage(retryMutation.error)} /> : null}
         {deleteMutation.isError ? <ErrorState message={getApiErrorMessage(deleteMutation.error)} /> : null}
         {listQuery.data && listQuery.data.items.length === 0 ? (
-          <EmptyState title="No reindex jobs found" body="Trigger a reindex from the Knowledge screen to populate this job history." />
+          <EmptyState title="再インデックスジョブはありません" body="ナレッジ画面から再インデックスを実行すると、ここに履歴が表示されます。" />
         ) : null}
         {listQuery.data ? (
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Job ID</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Document</TableCell>
-                <TableCell>Accepted</TableCell>
-                <TableCell>Completed</TableCell>
-                <TableCell>Error</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>ジョブID</TableCell>
+                <TableCell>状態</TableCell>
+                <TableCell>対象文書</TableCell>
+                <TableCell>受付日時</TableCell>
+                <TableCell>完了日時</TableCell>
+                <TableCell>エラー</TableCell>
+                <TableCell align="right">操作</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -98,7 +107,7 @@ export function ReindexJobsPage() {
                   <TableCell>
                     <StatusBadge status={item.status} />
                   </TableCell>
-                  <TableCell>{item.knowledgeDocumentId ?? "All documents"}</TableCell>
+                  <TableCell>{item.knowledgeDocumentId ?? "全件"}</TableCell>
                   <TableCell>{formatDateTime(item.acceptedAt)}</TableCell>
                   <TableCell>{formatDateTime(item.completedAt)}</TableCell>
                   <TableCell>{item.errorMessage ?? "-"}</TableCell>
@@ -110,7 +119,7 @@ export function ReindexJobsPage() {
                         onClick={() => retryMutation.mutate(item.jobId)}
                         disabled={item.status !== "FAILED"}
                       >
-                        Retry
+                        再試行
                       </Button>
                       <Button
                         size="small"
@@ -119,7 +128,7 @@ export function ReindexJobsPage() {
                         onClick={() => deleteMutation.mutate(item.jobId)}
                         disabled={item.status === "RUNNING"}
                       >
-                        Delete
+                        削除
                       </Button>
                     </Stack>
                   </TableCell>

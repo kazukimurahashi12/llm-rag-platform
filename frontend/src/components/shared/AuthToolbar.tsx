@@ -40,12 +40,12 @@ export function AuthToolbar() {
     return () => window.removeEventListener(AUTH_CHANGED_EVENT, syncSession);
   }, []);
 
-  const label = useMemo(() => authSession?.username ?? "Anonymous", [authSession?.username]);
+  const label = useMemo(() => authSession?.username ?? "未サインイン", [authSession?.username]);
   const secondaryLabel = useMemo(() => {
     if (!authSession) {
-      return "JWT sign-in required for protected screens";
+      return "保護画面の利用にはJWTサインインが必要です";
     }
-    return `${authSession.roles.join(", ")} · expires ${new Date(authSession.expiresAt).toLocaleString()}`;
+    return `${authSession.roles.join(", ")} · 有効期限 ${new Date(authSession.expiresAt).toLocaleString()}`;
   }, [authSession]);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -54,6 +54,7 @@ export function AuthToolbar() {
     setMessage(null);
     setErrorMessage(null);
     try {
+      clearAuthSession();
       const token = await issueAuthToken({ username, password });
       saveAuthSession({
         username: token.username,
@@ -62,9 +63,10 @@ export function AuthToolbar() {
         roles: token.roles,
       });
       setPassword("");
-      setMessage("Bearer token stored for protected endpoints.");
+      setMessage("保護API用のトークンを保存しました。");
       setOpen(false);
     } catch (error) {
+      clearAuthSession();
       setErrorMessage(getApiErrorMessage(error as AxiosError<ApiErrorResponse>));
     } finally {
       setIsSubmitting(false);
@@ -73,7 +75,7 @@ export function AuthToolbar() {
 
   const handleLogout = () => {
     clearAuthSession();
-    setMessage("Stored bearer token removed.");
+    setMessage("保存済みトークンを削除しました。");
     setErrorMessage(null);
     window.location.reload();
   };
@@ -95,21 +97,21 @@ export function AuthToolbar() {
         </div>
       </Stack>
       <Button startIcon={<LockOpenRoundedIcon />} variant="outlined" onClick={() => setOpen(true)}>
-        Sign in
+        サインイン
       </Button>
       <Button startIcon={<LogoutRoundedIcon />} color="inherit" onClick={handleLogout}>
-        Sign out
+        サインアウト
       </Button>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
         <form onSubmit={handleSubmit}>
-          <DialogTitle>JWT sign in</DialogTitle>
+          <DialogTitle>JWTサインイン</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ pt: 1 }}>
               {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
-              <TextField label="Username" value={username} onChange={(event) => setUsername(event.target.value)} required />
+              <TextField label="ユーザー名" value={username} onChange={(event) => setUsername(event.target.value)} required />
               <TextField
-                label="Password"
+                label="パスワード"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -119,10 +121,10 @@ export function AuthToolbar() {
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
             <Button onClick={() => setOpen(false)} color="inherit">
-              Cancel
+              キャンセル
             </Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign in"}
+              {isSubmitting ? "サインイン中..." : "サインイン"}
             </Button>
           </DialogActions>
         </form>

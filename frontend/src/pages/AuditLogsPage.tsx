@@ -41,14 +41,14 @@ export function AuditLogsPage() {
 
   return (
     <PageScaffold
-      title="Audit Logs"
-      description="Inspect usage, latency, and cost records for generated advice. Protected endpoints use the stored Bearer token."
+      title="監査ログ"
+      description="生成された助言の使用量、レイテンシ、コストを確認します。保護APIには保存済みBearerトークンを使用します。"
     >
-      <SectionCard title="Filters" description="Narrow the log list by model before opening a detailed prompt/response record.">
+      <SectionCard title="絞り込み" description="モデルで絞り込んでから、詳細な入出力内容を確認できます。">
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField select fullWidth label="Model" value={model} onChange={(event) => setModel(event.target.value)}>
-              <MenuItem value="">All models</MenuItem>
+            <TextField select fullWidth label="モデル" value={model} onChange={(event) => setModel(event.target.value)}>
+              <MenuItem value="">すべて</MenuItem>
               <MenuItem value="gpt-4o-mini">gpt-4o-mini</MenuItem>
               <MenuItem value="gpt-4o">gpt-4o</MenuItem>
             </TextField>
@@ -56,23 +56,23 @@ export function AuditLogsPage() {
         </Grid>
       </SectionCard>
 
-      <SectionCard title="Audit log records" description="Newest records first. Open a row to inspect masked or full prompt content.">
-        {listQuery.isLoading ? <LoadingState label="Loading audit logs..." /> : null}
+      <SectionCard title="監査ログ一覧" description="新しい順に表示します。行を開くと prompt / response の詳細を確認できます。">
+        {listQuery.isLoading ? <LoadingState label="監査ログを読み込み中..." /> : null}
         {listQuery.isError ? <ErrorState message={getApiErrorMessage(listQuery.error)} /> : null}
         {listQuery.data && listQuery.data.items.length === 0 ? (
-          <EmptyState title="No audit logs found" body="Run advice generation or broaden the filter to populate this table." />
+          <EmptyState title="監査ログがありません" body="助言生成を実行するか、絞り込み条件を見直してください。" />
         ) : null}
         {listQuery.data ? (
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>ID</TableCell>
-                <TableCell>Model</TableCell>
-                <TableCell>Total tokens</TableCell>
-                <TableCell>Cost</TableCell>
-                <TableCell>Latency</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell align="right">Detail</TableCell>
+                <TableCell>モデル</TableCell>
+                <TableCell>合計トークン</TableCell>
+                <TableCell>コスト</TableCell>
+                <TableCell>レイテンシ</TableCell>
+                <TableCell>作成日時</TableCell>
+                <TableCell align="right">詳細</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -86,7 +86,7 @@ export function AuditLogsPage() {
                   <TableCell>{formatDateTime(item.createdAt)}</TableCell>
                   <TableCell align="right">
                     <Button size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => setSelectedId(item.id)}>
-                      Open
+                      開く
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -97,22 +97,22 @@ export function AuditLogsPage() {
       </SectionCard>
 
       <Dialog open={selectedId !== null} onClose={() => setSelectedId(null)} fullWidth maxWidth="md">
-        <DialogTitle>Audit log detail</DialogTitle>
+        <DialogTitle>監査ログ詳細</DialogTitle>
         <DialogContent>
-          {detailQuery.isLoading ? <LoadingState label="Loading audit detail..." /> : null}
+          {detailQuery.isLoading ? <LoadingState label="監査ログ詳細を読み込み中..." /> : null}
           {detailQuery.isError ? <ErrorState message={getApiErrorMessage(detailQuery.error)} /> : null}
           {detailQuery.data ? (
             <Stack spacing={2}>
               <Typography variant="subtitle2" color="text.secondary">
                 {detailQuery.data.model} · {formatDateTime(detailQuery.data.createdAt)}
               </Typography>
-              <Typography variant="h6">Prompt</Typography>
+              <Typography variant="h6">入力内容</Typography>
               <Typography sx={{ whiteSpace: "pre-wrap" }}>{detailQuery.data.prompt}</Typography>
-              <Typography variant="h6">Response</Typography>
+              <Typography variant="h6">出力内容</Typography>
               <Typography sx={{ whiteSpace: "pre-wrap" }}>{detailQuery.data.response}</Typography>
               <Typography color="text.secondary">
-                Tokens {formatNumber(detailQuery.data.totalTokens)} · Cost {formatCurrencyJpy(detailQuery.data.costJpy)} ·
-                Latency {formatNumber(detailQuery.data.latencyMs)} ms
+                トークン {formatNumber(detailQuery.data.totalTokens)} · コスト {formatCurrencyJpy(detailQuery.data.costJpy)} ·
+                レイテンシ {formatNumber(detailQuery.data.latencyMs)} ms
               </Typography>
             </Stack>
           ) : null}

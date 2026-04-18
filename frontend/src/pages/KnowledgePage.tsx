@@ -54,28 +54,28 @@ export function KnowledgePage() {
 
   return (
     <PageScaffold
-      title="Knowledge"
-      description="Manage RAG source documents, confirm visibility scope, and trigger document-level reindexing."
+      title="ナレッジ"
+      description="RAG 用の文書を管理し、公開範囲を確認しながら再インデックスを実行します。"
     >
       <SectionCard
-        title="Register document"
-        description="Protected by admin bearer token. Add a document to the knowledge base and make it available for retrieval."
+        title="文書を登録"
+        description="管理者トークンで保護されています。ナレッジベースに文書を追加して検索対象にします。"
         action={
           <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-            Add document
+            文書を追加
           </Button>
         }
       >
         {createMutation.isError ? <ErrorState message={getApiErrorMessage(createMutation.error)} /> : null}
-        {createMutation.isSuccess ? <Alert severity="success">Knowledge document created.</Alert> : null}
+        {createMutation.isSuccess ? <Alert severity="success">文書を登録しました。</Alert> : null}
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth label="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
+            <TextField fullWidth label="タイトル" value={title} onChange={(event) => setTitle(event.target.value)} />
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField select fullWidth label="Access scope" value={accessScope} onChange={(event) => setAccessScope(event.target.value as "SHARED" | "ADMIN_ONLY")}>
-              <MenuItem value="SHARED">SHARED</MenuItem>
-              <MenuItem value="ADMIN_ONLY">ADMIN_ONLY</MenuItem>
+            <TextField select fullWidth label="公開範囲" value={accessScope} onChange={(event) => setAccessScope(event.target.value as "SHARED" | "ADMIN_ONLY")}>
+              <MenuItem value="SHARED">共有</MenuItem>
+              <MenuItem value="ADMIN_ONLY">管理者のみ</MenuItem>
             </TextField>
           </Grid>
           <Grid size={{ xs: 12 }}>
@@ -83,7 +83,7 @@ export function KnowledgePage() {
               fullWidth
               multiline
               minRows={6}
-              label="Content"
+              label="本文"
               value={content}
               onChange={(event) => setContent(event.target.value)}
             />
@@ -92,8 +92,8 @@ export function KnowledgePage() {
       </SectionCard>
 
       <SectionCard
-        title="Documents"
-        description="Review current RAG inputs and trigger embedding refresh jobs."
+        title="文書一覧"
+        description="現在の RAG 入力文書を確認し、埋め込み再生成ジョブを実行します。"
         action={
           <Button
             variant="outlined"
@@ -101,27 +101,27 @@ export function KnowledgePage() {
             onClick={() => fullReindexMutation.mutate()}
             disabled={fullReindexMutation.isPending}
           >
-            Reindex all
+            全件再インデックス
           </Button>
         }
       >
-        {fullReindexMutation.isSuccess ? <Alert severity="success">Full reindex job accepted.</Alert> : null}
+        {fullReindexMutation.isSuccess ? <Alert severity="success">全件再インデックスを受け付けました。</Alert> : null}
         {fullReindexMutation.isError ? <ErrorState message={getApiErrorMessage(fullReindexMutation.error)} /> : null}
         {singleReindexMutation.isError ? <ErrorState message={getApiErrorMessage(singleReindexMutation.error)} /> : null}
-        {listQuery.isLoading ? <LoadingState label="Loading knowledge documents..." /> : null}
+        {listQuery.isLoading ? <LoadingState label="ナレッジ文書を読み込み中..." /> : null}
         {listQuery.isError ? <ErrorState message={getApiErrorMessage(listQuery.error)} /> : null}
         {listQuery.data && listQuery.data.items.length === 0 ? (
-          <EmptyState title="No knowledge documents found" body="Register the first document to make the retrieval layer observable in the UI." />
+          <EmptyState title="ナレッジ文書がありません" body="最初の文書を登録すると、検索・根拠表示の動作を確認できます。" />
         ) : null}
         {listQuery.data ? (
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Scope</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Allowed users</TableCell>
-                <TableCell align="right">Action</TableCell>
+                <TableCell>タイトル</TableCell>
+                <TableCell>公開範囲</TableCell>
+                <TableCell>作成日時</TableCell>
+                <TableCell>許可ユーザー</TableCell>
+                <TableCell align="right">操作</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -143,7 +143,7 @@ export function KnowledgePage() {
                   <TableCell>{item.allowedUsernames.join(", ") || "-"}</TableCell>
                   <TableCell align="right">
                     <Button size="small" onClick={() => singleReindexMutation.mutate(item.id)}>
-                      Reindex
+                      再インデックス
                     </Button>
                   </TableCell>
                 </TableRow>

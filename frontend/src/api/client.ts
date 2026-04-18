@@ -9,6 +9,14 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  const requestUrl = config.url ?? "";
+  if (requestUrl === "/v1/auth/token") {
+    if (config.headers?.Authorization) {
+      delete config.headers.Authorization;
+    }
+    return config;
+  }
+
   const session = getStoredAuthSession();
   if (session) {
     config.headers.Authorization = `Bearer ${session.accessToken}`;

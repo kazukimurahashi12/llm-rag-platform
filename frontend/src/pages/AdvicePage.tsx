@@ -49,52 +49,52 @@ export function AdvicePage() {
 
   return (
     <PageScaffold
-      title="Advice"
-      description="Generate grounded management guidance and inspect source evidence, usage, and cost in one workspace."
+      title="助言生成"
+      description="マネジメント支援の助言を生成し、根拠文書・使用量・コストをまとめて確認します。"
       rightPanel={<AdviceResponsePanel data={adviceResult} />}
     >
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 4 }}>
           <MetricCard
-            label="Vector evidence"
+            label="参照文書数"
             value={hasResult ? String(adviceResult?.retrievedDocuments.length ?? 0) : "0"}
-            helper="Retrieved supporting document chunks"
+            helper="根拠として取得した文書チャンク数"
             icon={<SourceRoundedIcon color="primary" />}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <MetricCard
-            label="Total tokens"
+            label="合計トークン"
             value={hasResult ? String(adviceResult?.usage.totalTokens ?? 0) : "0"}
-            helper="Prompt + completion usage"
+            helper="入力と出力の合計使用量"
             icon={<TrendingUpRoundedIcon color="primary" />}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <MetricCard
-            label="Assistant mode"
+            label="応答トーン"
             value={formValue.tone}
-            helper={`Model ${formValue.model}`}
+            helper={`モデル ${formValue.model}`}
             icon={<PsychologyRoundedIcon color="primary" />}
           />
         </Grid>
       </Grid>
 
       <SectionCard
-        title="Generate advice"
-        description="Describe the situation, specify the target outcome, and choose the response style."
+        title="助言を生成"
+        description="状況、目標、応答トーンを指定して助言を生成します。"
       >
         {mutation.isError ? <ErrorState message={getApiErrorMessage(mutation.error)} /> : null}
         {formValue.model === "gpt-4o" ? (
-          <Alert severity="info">Use `gpt-4o-mini` for lower-cost MVP demos. Keep `gpt-4o` for higher-stakes output review.</Alert>
+          <Alert severity="info">MVPデモでは低コストな `gpt-4o-mini` を推奨します。高品質重視の確認時のみ `gpt-4o` を使用してください。</Alert>
         ) : null}
         <AdviceForm value={formValue} onChange={setFormValue} onSubmit={() => mutation.mutate()} loading={mutation.isPending} />
       </SectionCard>
 
       {!hasResult && !mutation.isPending ? (
         <EmptyState
-          title="No advice generated yet"
-          body="Run the advice flow to populate the right panel with the response, usage summary, and retrieved documents."
+          title="まだ助言が生成されていません"
+          body="助言を生成すると、右ペインに回答・使用量・参照文書が表示されます。"
         />
       ) : null}
     </PageScaffold>

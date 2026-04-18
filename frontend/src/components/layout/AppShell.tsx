@@ -26,18 +26,18 @@ import { env } from "../../env";
 import { AuthToolbar } from "../shared/AuthToolbar";
 
 const navigationItems = [
-  { label: "Dashboard", path: "/dashboard", icon: <DashboardRoundedIcon /> },
-  { label: "Advice", path: "/advice", icon: <AutoAwesomeIcon /> },
-  { label: "Knowledge", path: "/knowledge", icon: <DescriptionRoundedIcon /> },
-  { label: "Reindex Jobs", path: "/reindex-jobs", icon: <RefreshRoundedIcon /> },
-  { label: "Audit Logs", path: "/audit-logs", icon: <FactCheckRoundedIcon /> },
+  { label: "ダッシュボード", path: "/dashboard", icon: <DashboardRoundedIcon /> },
+  { label: "助言生成", path: "/advice", icon: <AutoAwesomeIcon /> },
+  { label: "ナレッジ", path: "/knowledge", icon: <DescriptionRoundedIcon /> },
+  { label: "再インデックス", path: "/reindex-jobs", icon: <RefreshRoundedIcon /> },
+  { label: "監査ログ", path: "/audit-logs", icon: <FactCheckRoundedIcon /> },
 ];
 
 const sidebarWidth = 252;
 
 export function AppShell() {
   const location = useLocation();
-  const currentPage = navigationItems.find((item) => location.pathname.startsWith(item.path))?.label ?? "Advice";
+  const currentPage = navigationItems.find((item) => location.pathname.startsWith(item.path))?.label ?? "助言生成";
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -63,14 +63,14 @@ export function AppShell() {
             <Box>
               <Typography variant="h6">ONBOARD-Core</Typography>
               <Typography color="text.secondary" variant="body2">
-                Management Support AI
+                マネジメント支援AI
               </Typography>
             </Box>
           </Stack>
         </Toolbar>
         <Divider />
         <Box sx={{ px: 2.5, py: 2 }}>
-          <Chip color="primary" label={`Environment: ${env.environmentLabel}`} variant="filled" />
+          <Chip color="primary" label={`環境: ${env.environmentLabel}`} variant="filled" />
         </Box>
         <List sx={{ px: 1.5 }}>
           {navigationItems.map((item) => (
@@ -110,7 +110,7 @@ export function AppShell() {
             <Stack direction="row" spacing={2} alignItems="center">
               <Box>
                 <Typography variant="overline" color="primary.main">
-                  Operational visibility
+                  運用可視化
                 </Typography>
                 <Typography variant="h5">{currentPage}</Typography>
               </Box>
@@ -128,7 +128,7 @@ export function AppShell() {
                 }}
               >
                 <SearchRoundedIcon fontSize="small" color="action" />
-                <InputBase placeholder="Search screens, jobs, or documents" sx={{ width: "100%" }} />
+                <InputBase placeholder="画面・ジョブ・文書を検索" sx={{ width: "100%" }} />
               </Paper>
             </Stack>
             <AuthToolbar />

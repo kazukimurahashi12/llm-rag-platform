@@ -17,9 +17,9 @@ interface AdviceFormProps {
 }
 
 const tones = [
-  { value: "empathetic", label: "Empathetic" },
-  { value: "direct", label: "Direct" },
-  { value: "supportive", label: "Supportive" },
+  { value: "empathetic", label: "共感的" },
+  { value: "direct", label: "率直" },
+  { value: "supportive", label: "支援的" },
 ];
 
 const models = [
@@ -37,28 +37,28 @@ export function AdviceForm({ value, onChange, onSubmit, loading }: AdviceFormPro
     <form onSubmit={handleSubmit}>
       <Stack spacing={2.5}>
         <TextField
-          label="Situation"
+          label="状況"
           value={value.situation}
           onChange={(event) => onChange({ ...value, situation: event.target.value })}
           multiline
           minRows={6}
-          placeholder="Describe the management situation that needs support."
+          placeholder="支援が必要なマネジメント上の状況を入力してください。"
           required
         />
         <TextField
-          label="Target Goal"
+          label="目標"
           value={value.targetGoal}
           onChange={(event) => onChange({ ...value, targetGoal: event.target.value })}
           multiline
           minRows={4}
-          placeholder="Describe the behavioral or team outcome you want to achieve."
+          placeholder="達成したい行動変容やチームの状態を入力してください。"
           required
         />
         <Stack direction="row" spacing={2}>
           <TextField
             select
             fullWidth
-            label="Tone"
+            label="トーン"
             value={value.tone}
             onChange={(event) => onChange({ ...value, tone: event.target.value })}
           >
@@ -71,7 +71,7 @@ export function AdviceForm({ value, onChange, onSubmit, loading }: AdviceFormPro
           <TextField
             select
             fullWidth
-            label="Model"
+            label="モデル"
             value={value.model}
             onChange={(event) => onChange({ ...value, model: event.target.value })}
           >
@@ -83,7 +83,7 @@ export function AdviceForm({ value, onChange, onSubmit, loading }: AdviceFormPro
           </TextField>
         </Stack>
         <Button size="large" variant="contained" type="submit" startIcon={<AutoAwesomeRoundedIcon />} disabled={loading}>
-          {loading ? "Generating..." : "Generate Advice"}
+          {loading ? "生成中..." : "助言を生成"}
         </Button>
       </Stack>
     </form>

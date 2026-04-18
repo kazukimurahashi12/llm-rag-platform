@@ -16,8 +16,8 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
         <Stack direction="row" spacing={1.5} alignItems="center">
           <SmartToyOutlinedIcon color="primary" />
           <div>
-            <Typography variant="h6">AI Workspace</Typography>
-            <Typography color="text.secondary">Generate advice to inspect grounded output, sources, and usage.</Typography>
+            <Typography variant="h6">AIワークスペース</Typography>
+            <Typography color="text.secondary">助言を生成すると、回答・根拠・使用量をここで確認できます。</Typography>
           </div>
         </Stack>
       </Stack>
@@ -35,19 +35,19 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
       >
         <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 1.5 }}>
           <SmartToyOutlinedIcon color="primary" />
-          <Typography variant="h6">Advice Output</Typography>
+          <Typography variant="h6">助言結果</Typography>
         </Stack>
         <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{data.advice}</Typography>
       </Box>
 
       <Stack spacing={1.25}>
-        <Typography variant="subtitle1">Usage</Typography>
+        <Typography variant="subtitle1">使用量</Typography>
         <Stack direction="row" flexWrap="wrap" gap={1}>
-          <UsagePill label="Model" value={data.usage.model} />
-          <UsagePill label="Prompt" value={formatNumber(data.usage.promptTokens)} />
-          <UsagePill label="Completion" value={formatNumber(data.usage.completionTokens)} />
-          <UsagePill label="Total tokens" value={formatNumber(data.usage.totalTokens)} />
-          <UsagePill label="Estimated cost" value={formatCurrencyJpy(data.usage.estimatedCostJpy)} />
+          <UsagePill label="モデル" value={data.usage.model} />
+          <UsagePill label="入力トークン" value={formatNumber(data.usage.promptTokens)} />
+          <UsagePill label="出力トークン" value={formatNumber(data.usage.completionTokens)} />
+          <UsagePill label="合計トークン" value={formatNumber(data.usage.totalTokens)} />
+          <UsagePill label="推定コスト" value={formatCurrencyJpy(data.usage.estimatedCostJpy)} />
         </Stack>
       </Stack>
 
@@ -56,7 +56,7 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
       <Stack spacing={1.5}>
         <Stack direction="row" spacing={1.25} alignItems="center">
           <TopicRoundedIcon color="primary" />
-          <Typography variant="subtitle1">Retrieved documents</Typography>
+          <Typography variant="subtitle1">参照文書</Typography>
         </Stack>
         <RetrievedDocumentList items={data.retrievedDocuments} />
       </Stack>

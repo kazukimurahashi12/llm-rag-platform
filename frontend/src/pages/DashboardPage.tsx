@@ -10,31 +10,31 @@ import { SectionCard } from "../components/shared/SectionCard";
 export function DashboardPage() {
   return (
     <PageScaffold
-      title="Dashboard"
-      description="A lightweight operational overview for request volume, retrieval behavior, and reindex job activity."
+      title="ダッシュボード"
+      description="リクエスト量、検索利用状況、再インデックス実行状況を簡易的に俯瞰します。"
     >
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="Total requests" value="-" helper="Connect audit metrics to populate" icon={<InsightsRoundedIcon color="primary" />} />
+          <MetricCard label="総リクエスト数" value="-" helper="監査ログ指標を接続すると表示されます" icon={<InsightsRoundedIcon color="primary" />} />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="Avg latency" value="-" helper="Measured from audit logs" icon={<TravelExploreRoundedIcon color="primary" />} />
+          <MetricCard label="平均レイテンシ" value="-" helper="監査ログから集計します" icon={<TravelExploreRoundedIcon color="primary" />} />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="Avg cost" value="-" helper="JPY per generation" icon={<PaidRoundedIcon color="primary" />} />
+          <MetricCard label="平均コスト" value="-" helper="1回生成あたりの円換算コスト" icon={<PaidRoundedIcon color="primary" />} />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="Reindex success" value="-" helper="Jobs completed successfully" icon={<RefreshRoundedIcon color="primary" />} />
+          <MetricCard label="再インデックス成功率" value="-" helper="正常完了したジョブの割合" icon={<RefreshRoundedIcon color="primary" />} />
         </Grid>
       </Grid>
 
       <SectionCard
-        title="MVP dashboard"
-        description="This page is intentionally light. It should aggregate audit and reindex metrics after the core screens are confirmed."
+        title="MVPダッシュボード"
+        description="このページは最小構成です。主要画面の接続確認後に監査ログや再インデックス指標を集約します。"
       >
         <Stack spacing={1}>
-          <Typography color="text.secondary">Use `Advice`, `Knowledge`, `Reindex Jobs`, and `Audit Logs` to validate the end-to-end flow first.</Typography>
-          <Typography color="text.secondary">Then backfill KPI cards from backend summaries or derived query calculations.</Typography>
+          <Typography color="text.secondary">まずは `助言生成`、`ナレッジ`、`再インデックス`、`監査ログ` の画面で end-to-end の動作を確認してください。</Typography>
+          <Typography color="text.secondary">その後に backend 集計値やクエリ結果を使って KPI カードを埋めます。</Typography>
         </Stack>
       </SectionCard>
     </PageScaffold>
