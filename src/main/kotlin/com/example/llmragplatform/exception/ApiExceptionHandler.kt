@@ -25,6 +25,26 @@ class ApiExceptionHandler {
         )
     }
 
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgumentException(ex: IllegalArgumentException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.badRequest().body(
+            ErrorResponse()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message(ex.message)
+                .details(emptyList())
+        )
+    }
+
+    @ExceptionHandler(InvalidCredentialsException::class)
+    fun handleInvalidCredentialsException(ex: InvalidCredentialsException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+            ErrorResponse()
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .message(ex.message)
+                .details(emptyList())
+        )
+    }
+
     @ExceptionHandler(OpenAiIntegrationException::class)
     fun handleOpenAiIntegrationException(ex: OpenAiIntegrationException): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(
@@ -32,6 +52,16 @@ class ApiExceptionHandler {
                 .status(HttpStatus.BAD_GATEWAY.value())
                 .message(ex.message)
                 .details(ex.details)
+        )
+    }
+
+    @ExceptionHandler(PromptInjectionDetectedException::class)
+    fun handlePromptInjectionDetectedException(ex: PromptInjectionDetectedException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.badRequest().body(
+            ErrorResponse()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message(ex.message)
+                .details(emptyList())
         )
     }
 

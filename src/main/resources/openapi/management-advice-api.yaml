@@ -9,6 +9,34 @@ info:
   version: 1.0.0
 
 paths:
+  /v1/auth/token:
+    post:
+      operationId: issueAuthToken
+      summary: Bearer トークンを発行する
+      description: |-
+        設定済みユーザー名とパスワードを検証し、以後の API 呼び出しで利用する
+        JWT Bearer トークンを発行する。
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+      responses:
+        '200':
+          description: トークン発行成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401':
+          description: 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/management/advice:
     post:
       operationId: getAdvice
@@ -39,9 +67,474 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/audit-logs:
+    get:
+      operationId: getAuditLogs
+      summary: 監査ログ一覧を取得する
+      description: |-
+        生成済みの監査ログを新しい順で取得する。
+        運用時の利用状況確認、コスト追跡、トラブルシュートを目的とする。
+      tags:
+        - Audit
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: 取得件数の上限
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          description: 取得開始位置
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: model
+          in: query
+          required: false
+          description: モデル名で絞り込む
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          description: この日時以降の監査ログを取得する
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: この日時以前の監査ログを取得する
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: 監査ログ取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/audit-logs/{auditLogId}:
+    get:
+      operationId: getAuditLogDetail
+      summary: 監査ログ詳細を取得する
+      description: |-
+        指定した監査ログ1件の詳細を取得する。
+        問い合わせ内容と応答内容を含む調査用途の API。
+      tags:
+        - Audit
+      parameters:
+        - name: auditLogId
+          in: path
+          required: true
+          description: 監査ログ ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 監査ログ詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogDetailResponse'
+        '404':
+          description: 監査ログが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/knowledge-documents:
+    get:
+      operationId: getKnowledgeDocuments
+      summary: ナレッジ文書一覧を取得する
+      description: |-
+        登録済みのナレッジ文書を新しい順で取得する。
+        管理用途と RAG 投入状況の確認を目的とする。
+      tags:
+        - Knowledge
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 文書一覧取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeDocumentListResponse'
+    post:
+      operationId: createKnowledgeDocument
+      summary: ナレッジ文書を登録する
+      description: |-
+        RAG 用の社内ナレッジ文書を登録する。
+        最小版では title と content をそのまま保存し、検索対象に加える。
+      tags:
+        - Knowledge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeDocumentCreateRequest'
+      responses:
+        '201':
+          description: 文書登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeDocumentResponse'
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/knowledge-documents/reindex:
+    post:
+      operationId: reindexKnowledgeDocuments
+      summary: ナレッジ文書チャンクの embedding を再作成する
+      description: |-
+        既存のナレッジ文書チャンクを対象に embedding を再作成する。
+        pgvector 検索を有効化した環境で、既存データを vector 検索へ載せるために利用する。
+      tags:
+        - Knowledge
+      responses:
+        '202':
+          description: 再インデックスジョブ受付完了
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReindexJobAcceptedResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/knowledge-documents/{knowledgeDocumentId}/reindex:
+    post:
+      operationId: reindexKnowledgeDocument
+      summary: 特定ナレッジ文書チャンクの embedding を再作成する
+      description: |-
+        指定したナレッジ文書に紐づくチャンクを対象に embedding を再作成する。
+        一部文書だけを再投入したいときに利用する。
+      tags:
+        - Knowledge
+      parameters:
+        - name: knowledgeDocumentId
+          in: path
+          required: true
+          description: ナレッジ文書 ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '202':
+          description: 再インデックスジョブ受付完了
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReindexJobAcceptedResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ナレッジ文書が存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/knowledge-documents/reindex-jobs/{jobId}:
+    get:
+      operationId: getKnowledgeReindexJob
+      summary: 再インデックスジョブの状態を取得する
+      description: |-
+        受付済みの再インデックスジョブについて、進行状態と結果を取得する。
+        非同期実行された再インデックスの完了確認に利用する。
+      tags:
+        - Knowledge
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: 再インデックスジョブ ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ジョブ状態取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReindexJobStatusResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ジョブが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: deleteKnowledgeReindexJob
+      summary: 再インデックスジョブを削除する
+      description: |-
+        完了済みまたは失敗済みの再インデックスジョブを削除する。
+        実行中ジョブは状態整合性を守るため削除できない。
+      tags:
+        - Knowledge
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: 再インデックスジョブ ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ジョブ削除成功
+        '400':
+          description: 実行中ジョブのため削除できない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ジョブが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/knowledge-documents/reindex-jobs/{jobId}/retry:
+    post:
+      operationId: retryKnowledgeReindexJob
+      summary: 失敗した再インデックスジョブを再実行する
+      description: |-
+        FAILED 状態の再インデックスジョブをもとに、新しいジョブを受付する。
+        元ジョブ自体の状態は変更せず、新しい jobId を発行する。
+      tags:
+        - Knowledge
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: 再試行したい再インデックスジョブ ID
+          schema:
+            type: string
+      responses:
+        '202':
+          description: 再インデックスジョブ再受付完了
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReindexJobAcceptedResponse'
+        '400':
+          description: FAILED 以外のジョブ状態のため再試行できない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ジョブまたは関連文書が存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/knowledge-documents/reindex-jobs:
+    get:
+      operationId: getKnowledgeReindexJobs
+      summary: 再インデックスジョブ一覧を取得する
+      description: |-
+        受付済みの再インデックスジョブを新しい順で取得する。
+        運用時の再実行履歴と進行状況の確認に利用する。
+      tags:
+        - Knowledge
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - QUEUED
+              - RUNNING
+              - COMPLETED
+              - FAILED
+        - name: knowledgeDocumentId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: acceptedFrom
+          in: query
+          required: false
+          description: この日時以降に受け付けたジョブを取得する
+          schema:
+            type: string
+            format: date-time
+        - name: acceptedTo
+          in: query
+          required: false
+          description: この日時以前に受け付けたジョブを取得する
+          schema:
+            type: string
+            format: date-time
+        - name: completedFrom
+          in: query
+          required: false
+          description: この日時以降に完了したジョブを取得する
+          schema:
+            type: string
+            format: date-time
+        - name: completedTo
+          in: query
+          required: false
+          description: この日時以前に完了したジョブを取得する
+          schema:
+            type: string
+            format: date-time
+        - name: sortBy
+          in: query
+          required: false
+          description: ソート対象項目
+          schema:
+            type: string
+            enum:
+              - acceptedAt
+              - completedAt
+            default: acceptedAt
+        - name: sortDirection
+          in: query
+          required: false
+          description: ソート方向
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: desc
+      responses:
+        '200':
+          description: ジョブ一覧取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReindexJobListResponse'
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
+    AuthTokenRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: ログインユーザー名
+        password:
+          type: string
+          description: ログインパスワード
+
+    AuthTokenResponse:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresAt
+        - username
+        - roles
+      properties:
+        accessToken:
+          type: string
+          description: API 呼び出しに利用する JWT
+        tokenType:
+          type: string
+          example: Bearer
+        expiresAt:
+          type: string
+          format: date-time
+        username:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+
     AdviceRequest:
       type: object
       required:
@@ -85,12 +578,17 @@ components:
       required:
         - advice
         - usage
+        - retrievedDocuments
       properties:
         advice:
           type: string
           description: 生成されたアドバイス
         usage:
           $ref: '#/components/schemas/UsageInfo'
+        retrievedDocuments:
+          type: array
+          items:
+            $ref: '#/components/schemas/RetrievedDocument'
 
     UsageInfo:
       type: object
@@ -112,6 +610,278 @@ components:
         estimatedCostJpy:
           type: number
           format: double
+
+    RetrievedDocument:
+      type: object
+      required:
+        - id
+        - title
+        - excerpt
+        - chunkIndex
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        excerpt:
+          type: string
+        chunkIndex:
+          type: integer
+        distanceScore:
+          type: number
+          format: double
+          description: pgvector の cosine distance。vector 検索時のみ設定される。
+        similarityScore:
+          type: number
+          format: double
+          description: cosine distance から計算した類似度の近似値。vector 検索時のみ設定される。
+
+    AuditLogListResponse:
+      type: object
+      required:
+        - items
+        - totalCount
+        - limit
+        - offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogSummaryItem'
+        totalCount:
+          type: integer
+          format: int64
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    AuditLogSummaryItem:
+      type: object
+      required:
+        - id
+        - model
+        - promptTokens
+        - completionTokens
+        - totalTokens
+        - costJpy
+        - latencyMs
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        model:
+          type: string
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+        totalTokens:
+          type: integer
+        costJpy:
+          type: number
+          format: double
+        latencyMs:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+
+    AuditLogDetailResponse:
+      type: object
+      required:
+        - id
+        - model
+        - prompt
+        - response
+        - promptTokens
+        - completionTokens
+        - totalTokens
+        - costJpy
+        - latencyMs
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        model:
+          type: string
+        prompt:
+          type: string
+        response:
+          type: string
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+        totalTokens:
+          type: integer
+        costJpy:
+          type: number
+          format: double
+        latencyMs:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+
+    KnowledgeDocumentCreateRequest:
+      type: object
+      required:
+        - title
+        - content
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        accessScope:
+          type: string
+          enum:
+            - SHARED
+            - ADMIN_ONLY
+          default: SHARED
+        allowedUsernames:
+          type: array
+          items:
+            type: string
+
+    KnowledgeDocumentResponse:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - accessScope
+        - allowedUsernames
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        content:
+          type: string
+        accessScope:
+          type: string
+          enum:
+            - SHARED
+            - ADMIN_ONLY
+        allowedUsernames:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    KnowledgeDocumentListResponse:
+      type: object
+      required:
+        - items
+        - totalCount
+        - limit
+        - offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeDocumentResponse'
+        totalCount:
+          type: integer
+          format: int64
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    KnowledgeReindexResponse:
+      type: object
+      required:
+        - documentsProcessed
+        - chunksProcessed
+        - embeddingsUpdated
+        - vectorSearchEnabled
+      properties:
+        documentsProcessed:
+          type: integer
+          format: int64
+        chunksProcessed:
+          type: integer
+          format: int64
+        embeddingsUpdated:
+          type: integer
+          format: int64
+        vectorSearchEnabled:
+          type: boolean
+
+    KnowledgeReindexJobAcceptedResponse:
+      type: object
+      required:
+        - jobId
+        - status
+        - acceptedAt
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+        acceptedAt:
+          type: string
+          format: date-time
+
+    KnowledgeReindexJobStatusResponse:
+      type: object
+      required:
+        - jobId
+        - status
+        - acceptedAt
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+        acceptedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        knowledgeDocumentId:
+          type: integer
+          format: int64
+        result:
+          $ref: '#/components/schemas/KnowledgeReindexResponse'
+        errorMessage:
+          type: string
+
+    KnowledgeReindexJobListResponse:
+      type: object
+      required:
+        - items
+        - totalCount
+        - limit
+        - offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeReindexJobStatusResponse'
+        totalCount:
+          type: integer
+          format: int64
+        limit:
+          type: integer
+        offset:
+          type: integer
 
     ErrorResponse:
       type: object

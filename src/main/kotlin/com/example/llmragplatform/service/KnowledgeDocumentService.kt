@@ -2,6 +2,7 @@ package com.example.llmragplatform.service
 
 import com.example.llmragplatform.config.RagProperties
 import com.example.llmragplatform.domain.entity.KnowledgeDocument
+import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentChunk
 import com.example.llmragplatform.exception.ResourceNotFoundException
 import com.example.llmragplatform.generated.model.KnowledgeDocumentCreateRequest
@@ -23,6 +24,7 @@ class KnowledgeDocumentService(
     private val knowledgeDocumentChunkRepository: KnowledgeDocumentChunkRepository,
     private val knowledgeChunkingService: KnowledgeChunkingService,
     private val knowledgeEmbeddingService: KnowledgeEmbeddingService,
+    private val knowledgeAccessControlService: KnowledgeAccessControlService,
 ) {
 
     fun getDocuments(limit: Int, offset: Int): KnowledgeDocumentListResponse {
@@ -32,6 +34,7 @@ class KnowledgeDocumentService(
         val safeOffset = offset.coerceAtLeast(0)
         // 作成日時の新しい順で文書一覧を取得する。
         val allDocuments = knowledgeDocumentRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+            .filter { knowledgeAccessControlService.canAccess(it) }
         // offset と limit を適用し、API 応答モデルへ変換する。
         val items = allDocuments.drop(safeOffset).take(safeLimit).map(::toResponse)
 
@@ -56,7 +59,15 @@ class KnowledgeDocumentService(
                 // 文書タイトルを保存する。
                 title = request.title,
                 // 文書本文を保存する。
-                content = request.content
+                content = request.content,
+                // 未指定時は既定値の SHARED を使う。
+                accessScope = request.accessScope?.value?.let { KnowledgeDocumentAccessScope.valueOf(it) }
+                    ?: KnowledgeDocumentAccessScope.SHARED,
+                // 文書ごとに明示許可するユーザー名一覧を保存する。
+                allowedUsernames = request.allowedUsernames?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.toSet()
+                    ?: emptySet()
             )
         )
         // 保存した文書本文を chunk 分割し、chunk エンティティ一覧へ変換する。
@@ -129,6 +140,10 @@ class KnowledgeDocumentService(
             .title(document.title)
             // 文書本文を設定する。
             .content(document.content)
+            // 文書 ACL を設定する。
+            .accessScope(KnowledgeDocumentResponse.AccessScopeEnum.fromValue(document.accessScope.name))
+            // 明示許可ユーザー名一覧を設定する。
+            .allowedUsernames(document.allowedUsernames.toList())
             // 作成日時を UTC の OffsetDateTime へ変換して設定する。
             .createdAt(OffsetDateTime.ofInstant(document.createdAt, ZoneOffset.UTC))
     }

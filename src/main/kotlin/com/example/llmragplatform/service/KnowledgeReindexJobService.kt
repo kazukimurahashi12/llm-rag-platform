@@ -9,6 +9,8 @@ import com.example.llmragplatform.generated.model.KnowledgeReindexJobStatusRespo
 import com.example.llmragplatform.generated.model.KnowledgeReindexResponse
 import com.example.llmragplatform.infrastructure.repository.KnowledgeDocumentRepository
 import com.example.llmragplatform.infrastructure.repository.KnowledgeReindexJobRepository
+import com.example.llmragplatform.infrastructure.repository.KnowledgeReindexJobSortBy
+import com.example.llmragplatform.infrastructure.repository.KnowledgeReindexJobSortDirection
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -71,6 +73,8 @@ class KnowledgeReindexJobService(
         acceptedTo: OffsetDateTime?,
         completedFrom: OffsetDateTime?,
         completedTo: OffsetDateTime?,
+        sortBy: String?,
+        sortDirection: String?,
     ): KnowledgeReindexJobListResponse {
         val safeLimit = limit.coerceIn(1, 100)
         val safeOffset = offset.coerceAtLeast(0)
@@ -82,6 +86,16 @@ class KnowledgeReindexJobService(
         val acceptedToInstant = acceptedTo?.toInstant()
         val completedFromInstant = completedFrom?.toInstant()
         val completedToInstant = completedTo?.toInstant()
+        val normalizedSortBy = when (sortBy?.takeIf { it.isNotBlank() } ?: "acceptedAt") {
+            "acceptedAt" -> KnowledgeReindexJobSortBy.ACCEPTED_AT
+            "completedAt" -> KnowledgeReindexJobSortBy.COMPLETED_AT
+            else -> throw IllegalArgumentException("Invalid reindex job sortBy: $sortBy")
+        }
+        val normalizedSortDirection = when ((sortDirection?.takeIf { it.isNotBlank() } ?: "desc").lowercase()) {
+            "asc" -> KnowledgeReindexJobSortDirection.ASC
+            "desc" -> KnowledgeReindexJobSortDirection.DESC
+            else -> throw IllegalArgumentException("Invalid reindex job sortDirection: $sortDirection")
+        }
 
         if (acceptedFromInstant != null && acceptedToInstant != null && acceptedFromInstant.isAfter(acceptedToInstant)) {
             throw IllegalArgumentException("acceptedFrom must be earlier than or equal to acceptedTo")
@@ -90,26 +104,23 @@ class KnowledgeReindexJobService(
             throw IllegalArgumentException("completedFrom must be earlier than or equal to completedTo")
         }
 
-        val filteredJobs = knowledgeReindexJobRepository.findAllByOrderByAcceptedAtDesc()
-            .filter { job ->
-                (normalizedStatus == null || job.status == normalizedStatus) &&
-                    (knowledgeDocumentId == null || job.knowledgeDocumentId == knowledgeDocumentId) &&
-                    (acceptedFromInstant == null || !job.acceptedAt.isBefore(acceptedFromInstant)) &&
-                    (acceptedToInstant == null || !job.acceptedAt.isAfter(acceptedToInstant)) &&
-                    (
-                        completedFromInstant == null ||
-                            (job.completedAt != null && !job.completedAt!!.isBefore(completedFromInstant))
-                        ) &&
-                    (
-                        completedToInstant == null ||
-                            (job.completedAt != null && !job.completedAt!!.isAfter(completedToInstant))
-                        )
-            }
-        val items = filteredJobs.drop(safeOffset).take(safeLimit).map(::toStatusResponse)
+        val searchResult = knowledgeReindexJobRepository.search(
+            limit = safeLimit,
+            offset = safeOffset,
+            status = normalizedStatus,
+            knowledgeDocumentId = knowledgeDocumentId,
+            acceptedFrom = acceptedFromInstant,
+            acceptedTo = acceptedToInstant,
+            completedFrom = completedFromInstant,
+            completedTo = completedToInstant,
+            sortBy = normalizedSortBy,
+            sortDirection = normalizedSortDirection,
+        )
+        val items = searchResult.items.map(::toStatusResponse)
 
         return KnowledgeReindexJobListResponse()
             .items(items)
-            .totalCount(filteredJobs.size.toLong())
+            .totalCount(searchResult.totalCount)
             .limit(safeLimit)
             .offset(safeOffset)
     }

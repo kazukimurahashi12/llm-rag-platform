@@ -1,6 +1,7 @@
 package com.example.llmragplatform.service
 
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentChunk
+import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
 import com.example.llmragplatform.config.RagProperties
 import com.example.llmragplatform.infrastructure.repository.KnowledgeDocumentChunkRepository
 import com.example.llmragplatform.infrastructure.repository.PgVectorChunkSearchRepository
@@ -13,19 +14,26 @@ class KnowledgeRetrievalService(
     private val knowledgeDocumentChunkRepository: KnowledgeDocumentChunkRepository,
     private val knowledgeEmbeddingService: KnowledgeEmbeddingService,
     private val pgVectorChunkSearchRepository: PgVectorChunkSearchRepository,
+    private val knowledgeRetrievalMetrics: KnowledgeRetrievalMetrics,
+    private val knowledgeAccessControlService: KnowledgeAccessControlService,
 ) {
     fun retrieveKnowledge(query: String, topK: Int = ragPropertiesFallbackTopK): RetrievedKnowledge {
         // 呼び出し側から topK が渡されていればそれを使い、0 以下なら設定値を使う。
         val safeTopK = if (topK > 0) topK else ragProperties.topK
+        // rerank 用にも使うため、先にキーワードを抽出する。
+        val keywords = extractKeywords(query)
         // まず vector 検索を試し、ヒットすればその結果を優先して返す。
         val vectorMatchedChunks = retrieveByVector(query, safeTopK)
         if (vectorMatchedChunks.isNotEmpty()) {
+            // vector 検索が最終採用された回数をメトリクスへ記録する。
+            knowledgeRetrievalMetrics.recordVectorAccepted()
             // vector 検索結果を API 向けの取得結果モデルへ変換して返す。
-            return toRetrievedKnowledgeFromVector(vectorMatchedChunks)
+            return toRetrievedKnowledgeFromVector(
+                rerankVectorMatchedChunks(vectorMatchedChunks, keywords, safeTopK)
+            )
         }
 
         // vector 検索で取れなかった場合に備えて、キーワード検索用の token を抽出する。
-        val keywords = extractKeywords(query)
         if (keywords.isEmpty()) {
             // 検索語が作れない場合は、追加ナレッジなしとして空結果を返す。
             return RetrievedKnowledge(
@@ -36,6 +44,7 @@ class KnowledgeRetrievalService(
 
         // すべての chunk を取得し、タイトルと本文に対する簡易キーワード一致数を計算する。
         val matchedChunks = knowledgeDocumentChunkRepository.findAll()
+            .filter { knowledgeAccessControlService.canAccess(it.knowledgeDocument) }
             .map { chunk ->
                 // 文書タイトルと chunk 本文を連結し、小文字化して検索しやすい文字列を作る。
                 val searchableText = "${chunk.knowledgeDocument.title} ${chunk.content}".lowercase(Locale.getDefault())
@@ -48,8 +57,8 @@ class KnowledgeRetrievalService(
             .filter { (_, score) -> score > 0 }
             // スコアの高い順に並べる。
             .sortedWith(compareByDescending<Pair<*, Int>> { it.second })
-            // 上位 topK 件だけを使う。
-            .take(safeTopK)
+            // rerank 用に少し広めに候補を残す。
+            .take(candidateLimit(safeTopK))
             // score を外し、chunk だけへ戻す。
             .map { (chunk, _) -> chunk as KnowledgeDocumentChunk }
 
@@ -62,7 +71,9 @@ class KnowledgeRetrievalService(
         }
 
         // キーワード検索結果を取得結果モデルへ変換して返す。
-        return toRetrievedKnowledge(matchedChunks)
+        return toRetrievedKnowledge(
+            rerankKeywordChunks(matchedChunks, keywords, safeTopK)
+        )
     }
 
     companion object {
@@ -80,7 +91,7 @@ class KnowledgeRetrievalService(
         // pgvector で近傍検索を行い、距離スコアつきの候補を取得する。
         val pgVectorMatches = pgVectorChunkSearchRepository.findNearestChunks(
             queryEmbedding = queryEmbedding,
-            limit = topK.coerceAtLeast(1)
+            limit = candidateLimit(topK).coerceAtLeast(1)
         )
         // 検索結果から chunk ID 一覧を取り出す。
         val chunkIds = pgVectorMatches.map { it.chunkId }
@@ -90,21 +101,37 @@ class KnowledgeRetrievalService(
         }
 
         // JPA 経由で chunk 実体をまとめて取得し、ID で引ける形にする。
-        val chunksById = knowledgeDocumentChunkRepository.findAllById(chunkIds).associateBy { it.id }
+        val chunksById = knowledgeDocumentChunkRepository.findAllById(chunkIds)
+            .filter { knowledgeAccessControlService.canAccess(it.knowledgeDocument) }
+            .associateBy { it.id }
         // 距離スコア側も chunk ID で引ける形にする。
         val matchesById = pgVectorMatches.associateBy { it.chunkId }
+        // 類似度しきい値で除外された候補数を数える。
+        var filteredOutCount = 0
         // 元の検索順位を保ったまま、chunk 実体と距離スコアを結びつける。
-        return chunkIds.mapNotNull { chunkId ->
+        val matchedChunks = chunkIds.mapNotNull { chunkId ->
             // chunk 実体が取れなければその候補は捨てる。
             val chunk = chunksById[chunkId] ?: return@mapNotNull null
             // 距離スコアが取れなければその候補は捨てる。
             val match = matchesById[chunkId] ?: return@mapNotNull null
+            // 類似度しきい値が設定されている場合は、基準未満の候補を除外する。
+            val similarityScore = toSimilarityScore(match.distanceScore)
+            if (!isSimilarityMatched(similarityScore)) {
+                filteredOutCount += 1
+                return@mapNotNull null
+            }
             // 取得した chunk と距離スコアを 1 件分の結果としてまとめる。
             VectorMatchedChunk(
                 chunk = chunk,
-                distanceScore = match.distanceScore
+                distanceScore = match.distanceScore,
+                similarityScore = similarityScore
             )
         }
+        knowledgeRetrievalMetrics.recordThresholdFiltered(filteredOutCount)
+        if (filteredOutCount > 0 && matchedChunks.isEmpty()) {
+            knowledgeRetrievalMetrics.recordThresholdFallback()
+        }
+        return matchedChunks
     }
 
     private fun toRetrievedKnowledge(chunks: List<KnowledgeDocumentChunk>): RetrievedKnowledge {
@@ -152,7 +179,7 @@ class KnowledgeRetrievalService(
                 // pgvector の距離スコアをそのまま設定する。
                 distanceScore = matchedChunk.distanceScore,
                 // 利用者向けには 0.0 - 1.0 の近似類似度も返す。
-                similarityScore = toSimilarityScore(matchedChunk.distanceScore)
+                similarityScore = matchedChunk.similarityScore
             )
         }
 
@@ -190,8 +217,59 @@ class KnowledgeRetrievalService(
         return (1.0 - distanceScore).coerceIn(0.0, 1.0)
     }
 
+    private fun rerankVectorMatchedChunks(
+        chunks: List<VectorMatchedChunk>,
+        keywords: List<String>,
+        topK: Int,
+    ): List<VectorMatchedChunk> {
+        if (!ragProperties.rerankEnabled) {
+            return chunks.take(topK)
+        }
+
+        return chunks
+            .sortedByDescending { matchedChunk ->
+                matchedChunk.similarityScore + lexicalRerankScore(matchedChunk.chunk, keywords)
+            }
+            .take(topK)
+    }
+
+    private fun rerankKeywordChunks(
+        chunks: List<KnowledgeDocumentChunk>,
+        keywords: List<String>,
+        topK: Int,
+    ): List<KnowledgeDocumentChunk> {
+        if (!ragProperties.rerankEnabled) {
+            return chunks.take(topK)
+        }
+
+        return chunks
+            .sortedByDescending { chunk -> lexicalRerankScore(chunk, keywords) }
+            .take(topK)
+    }
+
+    private fun lexicalRerankScore(chunk: KnowledgeDocumentChunk, keywords: List<String>): Double {
+        val normalizedTitle = chunk.knowledgeDocument.title.lowercase(Locale.getDefault())
+        val normalizedContent = chunk.content.lowercase(Locale.getDefault())
+        val titleMatches = keywords.count { normalizedTitle.contains(it) }
+        val contentMatches = keywords.count { normalizedContent.contains(it) }
+        return (titleMatches * 0.25) + (contentMatches * 0.1)
+    }
+
+    private fun candidateLimit(topK: Int): Int {
+        if (!ragProperties.rerankEnabled) {
+            return topK
+        }
+        return topK * ragProperties.rerankCandidateMultiplier.coerceAtLeast(1)
+    }
+
+    private fun isSimilarityMatched(similarityScore: Double): Boolean {
+        val threshold = ragProperties.minSimilarityScore ?: return true
+        return similarityScore >= threshold
+    }
+
     private data class VectorMatchedChunk(
         val chunk: KnowledgeDocumentChunk,
         val distanceScore: Double,
+        val similarityScore: Double,
     )
 }

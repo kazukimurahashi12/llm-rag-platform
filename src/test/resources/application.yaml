@@ -12,5 +12,15 @@ openai:
   api-key: test-key
   default-model: gpt-4o-mini
 
+app:
+  security:
+    jwt:
+      secret: test-jwt-secret-test-jwt-secret-1234
+      expiration-seconds: 3600
+      issuer: llm-rag-platform-test
+
 rag:
   vector-search-enabled: false
+  min-similarity-score:
+  rerank-enabled: false
+  rerank-candidate-multiplier: 3

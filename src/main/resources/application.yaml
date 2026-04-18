@@ -31,12 +31,15 @@ rag:
   vector-search-enabled: ${RAG_VECTOR_SEARCH_ENABLED:false}
   embedding-model: ${RAG_EMBEDDING_MODEL:text-embedding-3-small}
   embedding-dimensions: ${RAG_EMBEDDING_DIMENSIONS:1536}
+  min-similarity-score: ${RAG_MIN_SIMILARITY_SCORE:}
+  rerank-enabled: ${RAG_RERANK_ENABLED:false}
+  rerank-candidate-multiplier: ${RAG_RERANK_CANDIDATE_MULTIPLIER:3}
 
 app:
   reindex-jobs:
     cleanup-enabled: ${REINDEX_JOBS_CLEANUP_ENABLED:true}
     retention: ${REINDEX_JOBS_RETENTION:7d}
-    cleanup-interval: ${REINDEX_JOBS_CLEANUP_INTERVAL:1h}
+    cleanup-interval-ms: ${REINDEX_JOBS_CLEANUP_INTERVAL_MS:3600000}
   security:
     admin:
       username: ${AUDIT_ADMIN_USERNAME:admin}
@@ -48,6 +51,10 @@ app:
       password: ${AUDIT_OPERATOR_PASSWORD:change-operator}
       roles:
         - OPERATOR
+    jwt:
+      secret: ${APP_JWT_SECRET:change-this-jwt-secret-in-production-at-least-32-bytes}
+      expiration-seconds: ${APP_JWT_EXPIRATION_SECONDS:3600}
+      issuer: ${APP_JWT_ISSUER:llm-rag-platform}
 
 management:
   endpoints:

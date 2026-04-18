@@ -8,4 +8,7 @@ data class RagProperties(
     val vectorSearchEnabled: Boolean = false,
     val embeddingModel: String = "text-embedding-3-small",
     val embeddingDimensions: Int = 1536,
+    val minSimilarityScore: Double? = null,
+    val rerankEnabled: Boolean = false,
+    val rerankCandidateMultiplier: Int = 3,
 )

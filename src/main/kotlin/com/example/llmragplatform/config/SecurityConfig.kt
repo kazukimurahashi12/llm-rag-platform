@@ -1,6 +1,7 @@
 package com.example.llmragplatform.config
 
 import com.example.llmragplatform.generated.model.ErrorResponse
+import com.example.llmragplatform.security.JwtAuthenticationFilter
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
@@ -8,7 +9,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
-import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.core.userdetails.User
@@ -16,7 +16,9 @@ import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.provisioning.InMemoryUserDetailsManager
+import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 
 @Configuration
 @EnableMethodSecurity
@@ -48,18 +50,25 @@ class SecurityConfig {
     fun securityFilterChain(
         http: HttpSecurity,
         objectMapper: ObjectMapper,
+        jwtAuthenticationFilter: JwtAuthenticationFilter,
     ): SecurityFilterChain {
         return http
             .csrf { it.disable() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
-                it.requestMatchers(HttpMethod.POST, "/v1/knowledge-documents/*/reindex").hasRole("ADMIN")
+                it.requestMatchers(HttpMethod.POST, "/v1/auth/token").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/v1/knowledge-documents/*/reindex").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/v1/knowledge-documents/reindex").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/v1/knowledge-documents/reindex-jobs/*/retry").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/v1/knowledge-documents/reindex-jobs/*").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/v1/knowledge-documents/reindex-jobs/*").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/v1/knowledge-documents/reindex-jobs").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/v1/knowledge-documents").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/v1/knowledge-documents").hasAnyRole("ADMIN", "OPERATOR")
                     .requestMatchers("/v1/audit-logs/**").hasAnyRole("ADMIN", "OPERATOR")
                     .anyRequest().permitAll()
             }
-            .httpBasic(Customizer.withDefaults())
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling {
                 it.authenticationEntryPoint { _, response, _ ->
                     writeErrorResponse(
@@ -74,7 +83,7 @@ class SecurityConfig {
                         response = response,
                         objectMapper = objectMapper,
                         status = HttpStatus.FORBIDDEN,
-                        message = "Audit log access is restricted"
+                        message = "Access is denied"
                     )
                 }
             }
