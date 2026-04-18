@@ -59,7 +59,7 @@ export function KnowledgePage() {
     >
       <SectionCard
         title="Register document"
-        description="Protected by admin credentials. Add a document to the knowledge base and make it available for retrieval."
+        description="Protected by admin bearer token. Add a document to the knowledge base and make it available for retrieval."
         action={
           <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
             Add document

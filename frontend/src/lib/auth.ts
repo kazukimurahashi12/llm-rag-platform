@@ -1,35 +1,51 @@
-const AUTH_STORAGE_KEY = "onboard-core-auth";
+const AUTH_STORAGE_KEY = "onboard-core-auth-session";
+export const AUTH_CHANGED_EVENT = "onboard-core-auth-changed";
 
-export interface StoredCredentials {
+export interface StoredAuthSession {
   username: string;
-  password: string;
+  accessToken: string;
+  expiresAt: string;
+  roles: string[];
 }
 
-export function getStoredCredentials(): StoredCredentials | null {
+function isExpired(expiresAt: string): boolean {
+  const timestamp = Date.parse(expiresAt);
+  return Number.isNaN(timestamp) || timestamp <= Date.now();
+}
+
+function notifyAuthChanged() {
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+export function getStoredAuthSession(): StoredAuthSession | null {
   const stored = window.localStorage.getItem(AUTH_STORAGE_KEY);
   if (!stored) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(stored) as StoredCredentials;
-    if (!parsed.username || !parsed.password) {
+    const parsed = JSON.parse(stored) as StoredAuthSession;
+    if (!parsed.username || !parsed.accessToken || !parsed.expiresAt || !Array.isArray(parsed.roles)) {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+    if (isExpired(parsed.expiresAt)) {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
       return null;
     }
     return parsed;
   } catch {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
     return null;
   }
 }
 
-export function saveCredentials(credentials: StoredCredentials) {
-  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(credentials));
+export function saveAuthSession(session: StoredAuthSession) {
+  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  notifyAuthChanged();
 }
 
-export function clearCredentials() {
+export function clearAuthSession() {
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
-}
-
-export function buildBasicAuthHeader(credentials: StoredCredentials): string {
-  return `Basic ${window.btoa(`${credentials.username}:${credentials.password}`)}`;
+  notifyAuthChanged();
 }

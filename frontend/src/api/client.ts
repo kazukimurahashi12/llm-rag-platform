@@ -1,6 +1,6 @@
 import axios from "axios";
 import { env } from "../env";
-import { buildBasicAuthHeader, getStoredCredentials } from "../lib/auth";
+import { clearAuthSession, getStoredAuthSession } from "../lib/auth";
 import { ApiErrorResponse } from "../types/api";
 
 export const apiClient = axios.create({
@@ -9,12 +9,22 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const credentials = getStoredCredentials();
-  if (credentials) {
-    config.headers.Authorization = buildBasicAuthHeader(credentials);
+  const session = getStoredAuthSession();
+  if (session) {
+    config.headers.Authorization = `Bearer ${session.accessToken}`;
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      clearAuthSession();
+    }
+    return Promise.reject(error);
+  },
+);
 
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {

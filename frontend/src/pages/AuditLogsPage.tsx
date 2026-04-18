@@ -42,7 +42,7 @@ export function AuditLogsPage() {
   return (
     <PageScaffold
       title="Audit Logs"
-      description="Inspect usage, latency, and cost records for generated advice. Protected endpoints use stored Basic credentials."
+      description="Inspect usage, latency, and cost records for generated advice. Protected endpoints use the stored Bearer token."
     >
       <SectionCard title="Filters" description="Narrow the log list by model before opening a detailed prompt/response record.">
         <Grid container spacing={2}>

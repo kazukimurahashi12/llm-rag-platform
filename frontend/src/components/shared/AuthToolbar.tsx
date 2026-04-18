@@ -12,28 +12,69 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { FormEvent, useMemo, useState } from "react";
-import { clearCredentials, getStoredCredentials, saveCredentials } from "../../lib/auth";
+import { AxiosError } from "axios";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { issueAuthToken } from "../../api/auth";
+import { getApiErrorMessage } from "../../api/client";
+import { AUTH_CHANGED_EVENT, clearAuthSession, getStoredAuthSession, saveAuthSession } from "../../lib/auth";
+import { ApiErrorResponse } from "../../types/api";
 
 export function AuthToolbar() {
   const [open, setOpen] = useState(false);
-  const [username, setUsername] = useState(getStoredCredentials()?.username ?? "admin");
-  const [password, setPassword] = useState(getStoredCredentials()?.password ?? "change-me");
+  const [username, setUsername] = useState(getStoredAuthSession()?.username ?? "admin");
+  const [password, setPassword] = useState("change-me");
   const [message, setMessage] = useState<string | null>(null);
-  const credentials = getStoredCredentials();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authSession, setAuthSession] = useState(getStoredAuthSession());
 
-  const label = useMemo(() => credentials?.username ?? "Anonymous", [credentials?.username]);
+  useEffect(() => {
+    const syncSession = () => {
+      const session = getStoredAuthSession();
+      setAuthSession(session);
+      if (session) {
+        setUsername(session.username);
+      }
+    };
+    window.addEventListener(AUTH_CHANGED_EVENT, syncSession);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, syncSession);
+  }, []);
 
-  const handleSubmit = (event: FormEvent) => {
+  const label = useMemo(() => authSession?.username ?? "Anonymous", [authSession?.username]);
+  const secondaryLabel = useMemo(() => {
+    if (!authSession) {
+      return "JWT sign-in required for protected screens";
+    }
+    return `${authSession.roles.join(", ")} · expires ${new Date(authSession.expiresAt).toLocaleString()}`;
+  }, [authSession]);
+
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    saveCredentials({ username, password });
-    setMessage("Credentials stored for protected endpoints.");
-    setOpen(false);
+    setIsSubmitting(true);
+    setMessage(null);
+    setErrorMessage(null);
+    try {
+      const token = await issueAuthToken({ username, password });
+      saveAuthSession({
+        username: token.username,
+        accessToken: token.accessToken,
+        expiresAt: token.expiresAt,
+        roles: token.roles,
+      });
+      setPassword("");
+      setMessage("Bearer token stored for protected endpoints.");
+      setOpen(false);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error as AxiosError<ApiErrorResponse>));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
-    clearCredentials();
-    setMessage("Stored credentials removed.");
+    clearAuthSession();
+    setMessage("Stored bearer token removed.");
+    setErrorMessage(null);
     window.location.reload();
   };
 
@@ -49,22 +90,23 @@ export function AuthToolbar() {
         <div>
           <Typography fontWeight={700}>{label}</Typography>
           <Typography variant="body2" color="text.secondary">
-            Basic auth for audit and admin screens
+            {secondaryLabel}
           </Typography>
         </div>
       </Stack>
       <Button startIcon={<LockOpenRoundedIcon />} variant="outlined" onClick={() => setOpen(true)}>
-        Credentials
+        Sign in
       </Button>
       <Button startIcon={<LogoutRoundedIcon />} color="inherit" onClick={handleLogout}>
-        Clear
+        Sign out
       </Button>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
         <form onSubmit={handleSubmit}>
-          <DialogTitle>Basic authentication</DialogTitle>
+          <DialogTitle>JWT sign in</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ pt: 1 }}>
+              {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
               <TextField label="Username" value={username} onChange={(event) => setUsername(event.target.value)} required />
               <TextField
                 label="Password"
@@ -79,8 +121,8 @@ export function AuthToolbar() {
             <Button onClick={() => setOpen(false)} color="inherit">
               Cancel
             </Button>
-            <Button type="submit" variant="contained">
-              Save
+            <Button type="submit" variant="contained" disabled={isSubmitting}>
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
           </DialogActions>
         </form>

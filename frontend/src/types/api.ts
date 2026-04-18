@@ -1,5 +1,18 @@
 export type AdviceTone = "empathetic" | "direct" | "supportive";
 
+export interface AuthTokenRequest {
+  username: string;
+  password: string;
+}
+
+export interface AuthTokenResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresAt: string;
+  username: string;
+  roles: string[];
+}
+
 export interface AdviceRequest {
   memberContext: {
     situation: string;
