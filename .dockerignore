@@ -1,0 +1,9 @@
+.git
+.gradle
+.idea
+.kotlin
+build
+frontend/node_modules
+frontend/dist
+frontend/.env
+**/.DS_Store

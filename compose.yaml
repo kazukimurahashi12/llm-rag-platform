@@ -17,7 +17,42 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: onboard-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/rag_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      RAG_VECTOR_SEARCH_ENABLED: ${RAG_VECTOR_SEARCH_ENABLED:-true}
+      AUDIT_ADMIN_USERNAME: ${AUDIT_ADMIN_USERNAME:-admin}
+      AUDIT_ADMIN_PASSWORD: ${AUDIT_ADMIN_PASSWORD:-change-me}
+      AUDIT_OPERATOR_USERNAME: ${AUDIT_OPERATOR_USERNAME:-operator}
+      AUDIT_OPERATOR_PASSWORD: ${AUDIT_OPERATOR_PASSWORD:-change-operator}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: onboard-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+      VITE_APP_ENV: compose
+    ports:
+      - "5173:5173"
+
 volumes:
   onboard-postgres-data:
-    external: true
-    name: 2e0c05a7acbfff6980ab80a3033d31ab05aca8cab1897e369ca8ffad64d3e123
