@@ -1,9 +1,7 @@
 :root {
   font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   color: #193127;
-  background:
-    radial-gradient(circle at top left, rgba(154, 224, 174, 0.26), transparent 28%),
-    linear-gradient(180deg, #f7fbf8 0%, #eff6f0 100%);
+  background: #ffffff;
 }
 
 * {

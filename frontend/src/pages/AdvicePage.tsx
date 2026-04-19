@@ -8,7 +8,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { generateAdvice } from "../api/advice";
-import { AdviceForm, AdviceFormValue } from "../components/advice/AdviceForm";
+import { AdviceForm, AdviceFormValue, tones } from "../components/advice/AdviceForm";
 import { AdviceResponsePanel } from "../components/advice/AdviceResponsePanel";
 import { PageScaffold } from "../components/layout/PageScaffold";
 import { EmptyState, ErrorState } from "../components/shared/FeedbackState";
@@ -23,6 +23,8 @@ const initialValue: AdviceFormValue = {
   tone: "empathetic",
   model: "gpt-4o-mini",
 };
+
+const toneLabelMap = Object.fromEntries(tones.map((tone) => [tone.value, tone.label]));
 
 export function AdvicePage() {
   const [formValue, setFormValue] = useState<AdviceFormValue>(initialValue);
@@ -73,7 +75,7 @@ export function AdvicePage() {
         <Grid size={{ xs: 12, md: 4 }}>
           <MetricCard
             label="応答トーン"
-            value={formValue.tone}
+            value={toneLabelMap[formValue.tone] ?? formValue.tone}
             helper={`モデル ${formValue.model}`}
             icon={<PsychologyRoundedIcon color="primary" />}
           />

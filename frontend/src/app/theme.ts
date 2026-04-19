@@ -4,15 +4,15 @@ export const theme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#41a862",
-      light: "#77ca90",
-      dark: "#2b7a46",
+      main: "#7FFF00",
+      light: "#B2FF66",
+      dark: "#5FCC00",
     },
     secondary: {
       main: "#1f7a8c",
     },
     background: {
-      default: "#eff6f0",
+      default: "#ffffff",
       paper: "#ffffff",
     },
     success: {
@@ -50,8 +50,8 @@ export const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          border: "1px solid rgba(66, 128, 86, 0.12)",
-          boxShadow: "0 18px 48px rgba(18, 45, 28, 0.05)",
+          border: "1px solid rgba(127, 255, 0, 0.16)",
+          boxShadow: "0 12px 32px rgba(0, 0, 0, 0.03)",
           backgroundImage: "none",
         },
       },

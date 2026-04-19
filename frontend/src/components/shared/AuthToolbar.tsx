@@ -41,12 +41,6 @@ export function AuthToolbar() {
   }, []);
 
   const label = useMemo(() => authSession?.username ?? "未サインイン", [authSession?.username]);
-  const secondaryLabel = useMemo(() => {
-    if (!authSession) {
-      return "保護画面の利用にはJWTサインインが必要です";
-    }
-    return `${authSession.roles.join(", ")} · 有効期限 ${new Date(authSession.expiresAt).toLocaleString()}`;
-  }, [authSession]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -91,9 +85,6 @@ export function AuthToolbar() {
         <Avatar sx={{ bgcolor: "rgba(65, 168, 98, 0.16)", color: "primary.dark" }}>{label[0]?.toUpperCase()}</Avatar>
         <div>
           <Typography fontWeight={700}>{label}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {secondaryLabel}
-          </Typography>
         </div>
       </Stack>
       <Button startIcon={<LockOpenRoundedIcon />} variant="outlined" onClick={() => setOpen(true)}>
@@ -105,7 +96,7 @@ export function AuthToolbar() {
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
         <form onSubmit={handleSubmit}>
-          <DialogTitle>JWTサインイン</DialogTitle>
+          <DialogTitle>サインイン</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ pt: 1 }}>
               {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}

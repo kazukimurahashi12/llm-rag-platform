@@ -13,6 +13,15 @@ export interface AuthTokenResponse {
   roles: string[];
 }
 
+export interface DashboardSummaryResponse {
+  totalAdviceRequests: number;
+  averageLatencyMs: number;
+  averageCostJpy: number;
+  reindexSuccessRate: number;
+  completedReindexJobs: number;
+  failedReindexJobs: number;
+}
+
 export interface AdviceRequest {
   memberContext: {
     situation: string;

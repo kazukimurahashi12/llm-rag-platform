@@ -16,11 +16,11 @@ interface AdviceFormProps {
   loading: boolean;
 }
 
-const tones = [
+export const tones = [
   { value: "empathetic", label: "共感的" },
   { value: "direct", label: "率直" },
   { value: "supportive", label: "支援的" },
-];
+] as const;
 
 const models = [
   { value: "gpt-4o-mini", label: "gpt-4o-mini" },
