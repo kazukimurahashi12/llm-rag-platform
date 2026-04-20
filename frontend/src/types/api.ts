@@ -22,6 +22,61 @@ export interface DashboardSummaryResponse {
   failedReindexJobs: number;
 }
 
+export interface RetrievalEvaluationCaseResult {
+  label?: string;
+  query: string;
+  expectedDocumentTitles: string[];
+  retrievedDocumentTitles: string[];
+  matchedDocumentTitles: string[];
+  matched: boolean;
+  retrievedCount: number;
+  firstRelevantRank?: number;
+  reciprocalRank: number;
+  recallAtK: number;
+  precisionAtK: number;
+}
+
+export interface RetrievalEvaluationResponse {
+  topK: number;
+  totalCases: number;
+  matchedCases: number;
+  hitRate: number;
+  meanReciprocalRank: number;
+  averageRecallAtK: number;
+  averagePrecisionAtK: number;
+  averageRetrievedCount: number;
+  caseResults: RetrievalEvaluationCaseResult[];
+}
+
+export interface RetrievalEvaluationVariantRequest {
+  label: string;
+  topK?: number;
+  minSimilarityScore?: number;
+  rerankEnabled?: boolean;
+}
+
+export interface RetrievalEvaluationComparisonRequest {
+  variants: RetrievalEvaluationVariantRequest[];
+}
+
+export interface RetrievalEvaluationVariantResult {
+  label: string;
+  topK: number;
+  minSimilarityScore?: number;
+  rerankEnabled?: boolean;
+  totalCases: number;
+  matchedCases: number;
+  hitRate: number;
+  meanReciprocalRank: number;
+  averageRecallAtK: number;
+  averagePrecisionAtK: number;
+  averageRetrievedCount: number;
+}
+
+export interface RetrievalEvaluationComparisonResponse {
+  variantResults: RetrievalEvaluationVariantResult[];
+}
+
 export interface AdviceRequest {
   memberContext: {
     situation: string;
