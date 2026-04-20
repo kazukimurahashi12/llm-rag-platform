@@ -1,0 +1,26 @@
+{
+  "topK": 3,
+  "cases": [
+    {
+      "label": "weekly-report-delay",
+      "query": "週報の提出が遅れているメンバーに1on1で改善を促したい",
+      "expectedDocumentTitles": [
+        "週報運用ガイド"
+      ]
+    },
+    {
+      "label": "review-expectation-alignment",
+      "query": "評価面談で期待値を先に揃えて納得感を高めたい",
+      "expectedDocumentTitles": [
+        "評価面談ガイド"
+      ]
+    },
+    {
+      "label": "one-on-one-follow-up",
+      "query": "1on1で前回のアクションを振り返りたい",
+      "expectedDocumentTitles": [
+        "1on1 ガイド"
+      ]
+    }
+  ]
+}

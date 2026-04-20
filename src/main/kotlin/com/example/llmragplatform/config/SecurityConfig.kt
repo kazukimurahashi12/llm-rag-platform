@@ -68,6 +68,10 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/v1/knowledge-documents").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/v1/knowledge-documents").hasAnyRole("ADMIN", "OPERATOR")
                     .requestMatchers("/v1/audit-logs/**").hasAnyRole("ADMIN", "OPERATOR")
+                    .requestMatchers(HttpMethod.GET, "/v1/dashboard/summary").hasAnyRole("ADMIN", "OPERATOR")
+                    .requestMatchers(HttpMethod.POST, "/v1/retrieval-evaluations").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/v1/retrieval-evaluations/default").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/v1/retrieval-evaluations/comparisons").hasRole("ADMIN")
                     .anyRequest().permitAll()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)

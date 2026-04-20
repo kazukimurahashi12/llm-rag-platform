@@ -7,4 +7,5 @@ import java.time.Instant
 
 interface KnowledgeReindexJobRepository : JpaRepository<KnowledgeReindexJob, String>, KnowledgeReindexJobRepositoryCustom {
     fun deleteByStatusInAndCompletedAtBefore(statuses: Collection<KnowledgeReindexJobStatus>, completedAt: Instant): Long
+    fun countByStatus(status: KnowledgeReindexJobStatus): Long
 }

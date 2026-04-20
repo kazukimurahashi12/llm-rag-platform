@@ -18,18 +18,22 @@ class KnowledgeRetrievalService(
     private val knowledgeAccessControlService: KnowledgeAccessControlService,
 ) {
     fun retrieveKnowledge(query: String, topK: Int = ragPropertiesFallbackTopK): RetrievedKnowledge {
+        return retrieveKnowledge(query, RetrievalOptions(topK = topK))
+    }
+
+    fun retrieveKnowledge(query: String, options: RetrievalOptions): RetrievedKnowledge {
         // 呼び出し側から topK が渡されていればそれを使い、0 以下なら設定値を使う。
-        val safeTopK = if (topK > 0) topK else ragProperties.topK
+        val safeTopK = if (options.topK > 0) options.topK else ragProperties.topK
         // rerank 用にも使うため、先にキーワードを抽出する。
         val keywords = extractKeywords(query)
         // まず vector 検索を試し、ヒットすればその結果を優先して返す。
-        val vectorMatchedChunks = retrieveByVector(query, safeTopK)
+        val vectorMatchedChunks = retrieveByVector(query, safeTopK, options)
         if (vectorMatchedChunks.isNotEmpty()) {
             // vector 検索が最終採用された回数をメトリクスへ記録する。
             knowledgeRetrievalMetrics.recordVectorAccepted()
             // vector 検索結果を API 向けの取得結果モデルへ変換して返す。
             return toRetrievedKnowledgeFromVector(
-                rerankVectorMatchedChunks(vectorMatchedChunks, keywords, safeTopK)
+                rerankVectorMatchedChunks(vectorMatchedChunks, keywords, safeTopK, options)
             )
         }
 
@@ -58,7 +62,7 @@ class KnowledgeRetrievalService(
             // スコアの高い順に並べる。
             .sortedWith(compareByDescending<Pair<*, Int>> { it.second })
             // rerank 用に少し広めに候補を残す。
-            .take(candidateLimit(safeTopK))
+            .take(candidateLimit(safeTopK, options))
             // score を外し、chunk だけへ戻す。
             .map { (chunk, _) -> chunk as KnowledgeDocumentChunk }
 
@@ -72,7 +76,7 @@ class KnowledgeRetrievalService(
 
         // キーワード検索結果を取得結果モデルへ変換して返す。
         return toRetrievedKnowledge(
-            rerankKeywordChunks(matchedChunks, keywords, safeTopK)
+            rerankKeywordChunks(matchedChunks, keywords, safeTopK, options)
         )
     }
 
@@ -80,7 +84,7 @@ class KnowledgeRetrievalService(
         private const val ragPropertiesFallbackTopK = 0
     }
 
-    private fun retrieveByVector(query: String, topK: Int): List<VectorMatchedChunk> {
+    private fun retrieveByVector(query: String, topK: Int, options: RetrievalOptions): List<VectorMatchedChunk> {
         // vector 検索が無効なら何も返さず、呼び出し元で fallback させる。
         if (!ragProperties.vectorSearchEnabled) {
             return emptyList()
@@ -91,7 +95,7 @@ class KnowledgeRetrievalService(
         // pgvector で近傍検索を行い、距離スコアつきの候補を取得する。
         val pgVectorMatches = pgVectorChunkSearchRepository.findNearestChunks(
             queryEmbedding = queryEmbedding,
-            limit = candidateLimit(topK).coerceAtLeast(1)
+            limit = candidateLimit(topK, options).coerceAtLeast(1)
         )
         // 検索結果から chunk ID 一覧を取り出す。
         val chunkIds = pgVectorMatches.map { it.chunkId }
@@ -116,7 +120,7 @@ class KnowledgeRetrievalService(
             val match = matchesById[chunkId] ?: return@mapNotNull null
             // 類似度しきい値が設定されている場合は、基準未満の候補を除外する。
             val similarityScore = toSimilarityScore(match.distanceScore)
-            if (!isSimilarityMatched(similarityScore)) {
+            if (!isSimilarityMatched(similarityScore, options)) {
                 filteredOutCount += 1
                 return@mapNotNull null
             }
@@ -221,8 +225,9 @@ class KnowledgeRetrievalService(
         chunks: List<VectorMatchedChunk>,
         keywords: List<String>,
         topK: Int,
+        options: RetrievalOptions,
     ): List<VectorMatchedChunk> {
-        if (!ragProperties.rerankEnabled) {
+        if (!isRerankEnabled(options)) {
             return chunks.take(topK)
         }
 
@@ -237,8 +242,9 @@ class KnowledgeRetrievalService(
         chunks: List<KnowledgeDocumentChunk>,
         keywords: List<String>,
         topK: Int,
+        options: RetrievalOptions,
     ): List<KnowledgeDocumentChunk> {
-        if (!ragProperties.rerankEnabled) {
+        if (!isRerankEnabled(options)) {
             return chunks.take(topK)
         }
 
@@ -255,16 +261,20 @@ class KnowledgeRetrievalService(
         return (titleMatches * 0.25) + (contentMatches * 0.1)
     }
 
-    private fun candidateLimit(topK: Int): Int {
-        if (!ragProperties.rerankEnabled) {
+    private fun candidateLimit(topK: Int, options: RetrievalOptions): Int {
+        if (!isRerankEnabled(options)) {
             return topK
         }
         return topK * ragProperties.rerankCandidateMultiplier.coerceAtLeast(1)
     }
 
-    private fun isSimilarityMatched(similarityScore: Double): Boolean {
-        val threshold = ragProperties.minSimilarityScore ?: return true
+    private fun isSimilarityMatched(similarityScore: Double, options: RetrievalOptions): Boolean {
+        val threshold = options.minSimilarityScore ?: ragProperties.minSimilarityScore ?: return true
         return similarityScore >= threshold
+    }
+
+    private fun isRerankEnabled(options: RetrievalOptions): Boolean {
+        return options.rerankEnabled ?: ragProperties.rerankEnabled
     }
 
     private data class VectorMatchedChunk(
@@ -273,3 +283,9 @@ class KnowledgeRetrievalService(
         val similarityScore: Double,
     )
 }
+
+data class RetrievalOptions(
+    val topK: Int = 0,
+    val minSimilarityScore: Double? = null,
+    val rerankEnabled: Boolean? = null,
+)

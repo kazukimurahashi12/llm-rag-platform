@@ -157,6 +157,131 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      summary: ダッシュボード集計値を取得する
+      description: |-
+        ダッシュボード画面で表示する主要 KPI の集計値を返す。
+        監査ログと再インデックスジョブの運用状況を簡易的に俯瞰するために利用する。
+      tags:
+        - Dashboard
+      responses:
+        '200':
+          description: ダッシュボード集計値取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+        '403':
+          description: アクセス権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/retrieval-evaluations:
+    post:
+      operationId: evaluateRetrieval
+      summary: Retrieval 品質を評価する
+      description: |-
+        評価ケースの query と期待文書タイトル一覧を受け取り、現在の retrieval 設定で
+        どれだけ期待文書を取得できるかを集計する。
+      tags:
+        - Evaluation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetrievalEvaluationRequest'
+      responses:
+        '200':
+          description: Retrieval 評価成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrievalEvaluationResponse'
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/retrieval-evaluations/default:
+    get:
+      operationId: evaluateDefaultRetrievalCases
+      summary: 標準評価ケースで Retrieval 品質を評価する
+      description: |-
+        classpath 上の evaluation/retrieval-cases.json を読み込み、現在の retrieval 設定で
+        標準評価セットを実行する。
+      tags:
+        - Evaluation
+      parameters:
+        - name: topK
+          in: query
+          required: false
+          description: 評価時に使う retrieval 件数。未指定時は評価ファイルまたは rag.top-k を使う。
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Retrieval 評価成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrievalEvaluationResponse'
+        '400':
+          description: 評価ファイル不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/retrieval-evaluations/comparisons:
+    post:
+      operationId: compareRetrievalEvaluations
+      summary: 複数条件で Retrieval 品質を比較する
+      description: |-
+        標準評価ケースに対して、topK などの複数条件をまとめて実行し、評価指標を比較する。
+      tags:
+        - Evaluation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetrievalEvaluationComparisonRequest'
+      responses:
+        '200':
+          description: Retrieval 評価比較成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrievalEvaluationComparisonResponse'
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/knowledge-documents:
     get:
       operationId: getKnowledgeDocuments
@@ -728,6 +853,245 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    DashboardSummaryResponse:
+      type: object
+      required:
+        - totalAdviceRequests
+        - averageLatencyMs
+        - averageCostJpy
+        - reindexSuccessRate
+        - completedReindexJobs
+        - failedReindexJobs
+      properties:
+        totalAdviceRequests:
+          type: integer
+          format: int64
+        averageLatencyMs:
+          type: number
+          format: double
+        averageCostJpy:
+          type: number
+          format: double
+        reindexSuccessRate:
+          type: number
+          format: double
+          description: completed / (completed + failed) を 0.0 から 1.0 で返す
+        completedReindexJobs:
+          type: integer
+          format: int64
+        failedReindexJobs:
+          type: integer
+          format: int64
+
+    RetrievalEvaluationRequest:
+      type: object
+      required:
+        - cases
+      properties:
+        topK:
+          type: integer
+          minimum: 1
+          description: 評価時に使う retrieval 件数。未指定時は rag.top-k を使う。
+        cases:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RetrievalEvaluationCaseRequest'
+
+    RetrievalEvaluationCaseRequest:
+      type: object
+      required:
+        - query
+        - expectedDocumentTitles
+      properties:
+        label:
+          type: string
+          description: ケース識別用の任意ラベル
+        query:
+          type: string
+        expectedDocumentTitles:
+          type: array
+          minItems: 1
+          items:
+            type: string
+
+    RetrievalEvaluationResponse:
+      type: object
+      required:
+        - topK
+        - totalCases
+        - matchedCases
+        - hitRate
+        - meanReciprocalRank
+        - averageRecallAtK
+        - averagePrecisionAtK
+        - averageRetrievedCount
+        - caseResults
+      properties:
+        topK:
+          type: integer
+        totalCases:
+          type: integer
+        matchedCases:
+          type: integer
+        hitRate:
+          type: number
+          format: double
+          description: 期待文書を1件以上取得できたケースの割合
+        meanReciprocalRank:
+          type: number
+          format: double
+          description: 最初に一致した期待文書の順位から計算した MRR
+        averageRecallAtK:
+          type: number
+          format: double
+          description: ケース単位 Recall@K の平均
+        averagePrecisionAtK:
+          type: number
+          format: double
+          description: ケース単位 Precision@K の平均
+        averageRetrievedCount:
+          type: number
+          format: double
+        caseResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/RetrievalEvaluationCaseResult'
+
+    RetrievalEvaluationCaseResult:
+      type: object
+      required:
+        - query
+        - expectedDocumentTitles
+        - retrievedDocumentTitles
+        - matchedDocumentTitles
+        - matched
+        - retrievedCount
+        - firstRelevantRank
+        - reciprocalRank
+        - recallAtK
+        - precisionAtK
+      properties:
+        label:
+          type: string
+        query:
+          type: string
+        expectedDocumentTitles:
+          type: array
+          items:
+            type: string
+        retrievedDocumentTitles:
+          type: array
+          items:
+            type: string
+        matchedDocumentTitles:
+          type: array
+          items:
+            type: string
+        matched:
+          type: boolean
+        retrievedCount:
+          type: integer
+        firstRelevantRank:
+          type: integer
+          nullable: true
+          description: 最初に期待文書が出現した 1-based rank。一致なしの場合は null。
+        reciprocalRank:
+          type: number
+          format: double
+        recallAtK:
+          type: number
+          format: double
+        precisionAtK:
+          type: number
+          format: double
+
+    RetrievalEvaluationComparisonRequest:
+      type: object
+      required:
+        - variants
+      properties:
+        variants:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RetrievalEvaluationVariantRequest'
+
+    RetrievalEvaluationVariantRequest:
+      type: object
+      required:
+        - label
+      properties:
+        label:
+          type: string
+        topK:
+          type: integer
+          minimum: 1
+          description: この比較条件で使う retrieval 件数
+        minSimilarityScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: この比較条件で使う類似度しきい値。未指定時は既定設定を使う。
+        rerankEnabled:
+          type: boolean
+          description: この比較条件で rerank を有効化するか。未指定時は既定設定を使う。
+
+    RetrievalEvaluationComparisonResponse:
+      type: object
+      required:
+        - variantResults
+      properties:
+        variantResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/RetrievalEvaluationVariantResult'
+
+    RetrievalEvaluationVariantResult:
+      type: object
+      required:
+        - label
+        - topK
+        - totalCases
+        - matchedCases
+        - hitRate
+        - meanReciprocalRank
+        - averageRecallAtK
+        - averagePrecisionAtK
+        - averageRetrievedCount
+      properties:
+        label:
+          type: string
+        topK:
+          type: integer
+        minSimilarityScore:
+          type: number
+          format: double
+          nullable: true
+        rerankEnabled:
+          type: boolean
+          nullable: true
+        totalCases:
+          type: integer
+        matchedCases:
+          type: integer
+        hitRate:
+          type: number
+          format: double
+        meanReciprocalRank:
+          type: number
+          format: double
+        averageRecallAtK:
+          type: number
+          format: double
+        averagePrecisionAtK:
+          type: number
+          format: double
+        averageRetrievedCount:
+          type: number
+          format: double
 
     KnowledgeDocumentCreateRequest:
       type: object
