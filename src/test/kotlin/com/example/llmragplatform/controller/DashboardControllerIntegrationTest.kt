@@ -123,6 +123,16 @@ class DashboardControllerIntegrationTest {
             .andExpect(jsonPath("$.completedReindexJobs").value(2))
             .andExpect(jsonPath("$.failedReindexJobs").value(1))
             .andExpect(jsonPath("$.reindexSuccessRate").value(0.6666666666666666))
+            .andExpect(jsonPath("$.queuedReindexJobs").value(0))
+            .andExpect(jsonPath("$.runningReindexJobs").value(0))
+            .andExpect(jsonPath("$.totalReindexJobs").value(3))
+            .andExpect(jsonPath("$.totalKnowledgeDocuments").value(0))
+            .andExpect(jsonPath("$.totalKnowledgeChunks").value(0))
+            .andExpect(jsonPath("$.sharedKnowledgeDocuments").value(0))
+            .andExpect(jsonPath("$.restrictedKnowledgeDocuments").value(0))
+            .andExpect(jsonPath("$.vectorAcceptedRetrievals").value(0.0))
+            .andExpect(jsonPath("$.vectorThresholdFallbacks").value(0.0))
+            .andExpect(jsonPath("$.vectorThresholdFilteredChunks").value(0.0))
     }
 
     @Test

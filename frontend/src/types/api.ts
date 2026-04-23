@@ -20,6 +20,16 @@ export interface DashboardSummaryResponse {
   reindexSuccessRate: number;
   completedReindexJobs: number;
   failedReindexJobs: number;
+  queuedReindexJobs: number;
+  runningReindexJobs: number;
+  totalReindexJobs: number;
+  totalKnowledgeDocuments: number;
+  totalKnowledgeChunks: number;
+  sharedKnowledgeDocuments: number;
+  restrictedKnowledgeDocuments: number;
+  vectorAcceptedRetrievals: number;
+  vectorThresholdFallbacks: number;
+  vectorThresholdFilteredChunks: number;
 }
 
 export interface RetrievalEvaluationCaseResult {

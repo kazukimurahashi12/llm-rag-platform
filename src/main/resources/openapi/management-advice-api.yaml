@@ -863,6 +863,16 @@ components:
         - reindexSuccessRate
         - completedReindexJobs
         - failedReindexJobs
+        - queuedReindexJobs
+        - runningReindexJobs
+        - totalReindexJobs
+        - totalKnowledgeDocuments
+        - totalKnowledgeChunks
+        - sharedKnowledgeDocuments
+        - restrictedKnowledgeDocuments
+        - vectorAcceptedRetrievals
+        - vectorThresholdFallbacks
+        - vectorThresholdFilteredChunks
       properties:
         totalAdviceRequests:
           type: integer
@@ -883,6 +893,39 @@ components:
         failedReindexJobs:
           type: integer
           format: int64
+        queuedReindexJobs:
+          type: integer
+          format: int64
+        runningReindexJobs:
+          type: integer
+          format: int64
+        totalReindexJobs:
+          type: integer
+          format: int64
+        totalKnowledgeDocuments:
+          type: integer
+          format: int64
+        totalKnowledgeChunks:
+          type: integer
+          format: int64
+        sharedKnowledgeDocuments:
+          type: integer
+          format: int64
+        restrictedKnowledgeDocuments:
+          type: integer
+          format: int64
+        vectorAcceptedRetrievals:
+          type: number
+          format: double
+          description: アプリ起動後に vector 検索結果が採用された回数
+        vectorThresholdFallbacks:
+          type: number
+          format: double
+          description: similarity threshold により keyword fallback した回数
+        vectorThresholdFilteredChunks:
+          type: number
+          format: double
+          description: similarity threshold により除外された chunk 数
 
     RetrievalEvaluationRequest:
       type: object
