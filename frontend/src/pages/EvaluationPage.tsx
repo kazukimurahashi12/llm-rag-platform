@@ -1,4 +1,6 @@
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
+import GppMaybeRoundedIcon from "@mui/icons-material/GppMaybeRounded";
+import PolicyRoundedIcon from "@mui/icons-material/PolicyRounded";
 import ChecklistRoundedIcon from "@mui/icons-material/ChecklistRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import PrecisionManufacturingRoundedIcon from "@mui/icons-material/PrecisionManufacturingRounded";
@@ -16,7 +18,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { compareRetrievalEvaluations, fetchDefaultRetrievalEvaluation } from "../api/evaluation";
+import {
+  compareRetrievalEvaluations,
+  fetchDefaultPromptInjectionEvaluation,
+  fetchDefaultRetrievalEvaluation,
+} from "../api/evaluation";
 import { getApiErrorMessage } from "../api/client";
 import { PageScaffold } from "../components/layout/PageScaffold";
 import { ErrorState, LoadingState } from "../components/shared/FeedbackState";
@@ -65,6 +71,11 @@ export function EvaluationPage() {
   });
 
   const evaluation = defaultEvaluationQuery.data;
+  const promptInjectionQuery = useQuery({
+    queryKey: ["prompt-injection-evaluation-default"],
+    queryFn: fetchDefaultPromptInjectionEvaluation,
+  });
+  const promptInjectionEvaluation = promptInjectionQuery.data;
 
   return (
     <PageScaffold
@@ -129,6 +140,81 @@ export function EvaluationPage() {
                     <TableCell>{item.firstRelevantRank ?? "-"}</TableCell>
                     <TableCell>{formatPercent(item.recallAtK)}</TableCell>
                     <TableCell>{formatPercent(item.precisionAtK)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Stack>
+        ) : null}
+      </SectionCard>
+
+      <SectionCard
+        title="Prompt Injection 評価"
+        description="src/main/resources/evaluation/prompt-injection-cases.json を使って guard の検知精度を確認します。"
+      >
+        {promptInjectionQuery.isLoading ? <LoadingState label="Prompt Injection 評価を実行中..." /> : null}
+        {promptInjectionQuery.isError ? <ErrorState message={getApiErrorMessage(promptInjectionQuery.error)} /> : null}
+        {promptInjectionEvaluation ? (
+          <Stack spacing={2.5}>
+            <Grid container spacing={2.5}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <MetricCard
+                  label="Detection Rate"
+                  value={formatPercent(promptInjectionEvaluation.detectionRate)}
+                  helper="block が期待されるケースを正しく止めた割合"
+                  icon={<PolicyRoundedIcon color="primary" />}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <MetricCard
+                  label="False Positive Rate"
+                  value={formatPercent(promptInjectionEvaluation.falsePositiveRate)}
+                  helper="allow が期待されるケースを誤って止めた割合"
+                  icon={<GppMaybeRoundedIcon color="primary" />}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <MetricCard
+                  label="Accuracy"
+                  value={formatPercent(promptInjectionEvaluation.accuracy)}
+                  helper={`全 ${promptInjectionEvaluation.totalCases} ケースの正答率`}
+                  icon={<InsightsRoundedIcon color="primary" />}
+                />
+              </Grid>
+            </Grid>
+
+            <Alert severity="info">
+              block 期待 {promptInjectionEvaluation.expectedBlockedCases} ケース中 {promptInjectionEvaluation.correctlyBlockedCases} ケースを検知。
+              allow 期待 {promptInjectionEvaluation.expectedAllowedCases} ケース中 {promptInjectionEvaluation.correctlyAllowedCases} ケースを通過。
+            </Alert>
+
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Case</TableCell>
+                  <TableCell>Expected</TableCell>
+                  <TableCell>Actual</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Guard Message</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {promptInjectionEvaluation.caseResults.map((item) => (
+                  <TableRow key={item.label ?? item.input} hover>
+                    <TableCell>
+                      <Stack spacing={0.5}>
+                        <Typography fontWeight={700}>{item.label ?? "unlabeled"}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.input}
+                        </Typography>
+                      </Stack>
+                    </TableCell>
+                    <TableCell>{item.expectedOutcome}</TableCell>
+                    <TableCell>{item.actualOutcome}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={item.matched ? "OK" : "MISMATCH"} />
+                    </TableCell>
+                    <TableCell>{item.detectionMessage ?? "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

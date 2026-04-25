@@ -72,6 +72,8 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/v1/retrieval-evaluations").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/v1/retrieval-evaluations/default").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/v1/retrieval-evaluations/comparisons").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/v1/prompt-injection-evaluations").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/v1/prompt-injection-evaluations/default").hasRole("ADMIN")
                     .anyRequest().permitAll()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)

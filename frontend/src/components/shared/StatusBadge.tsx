@@ -10,6 +10,8 @@ const colorMap: Record<string, "success" | "info" | "error" | "warning" | "defau
   RUNNING: "info",
   QUEUED: "warning",
   FAILED: "error",
+  OK: "success",
+  MISMATCH: "error",
   SHARED: "success",
   ADMIN_ONLY: "warning",
 };
@@ -20,6 +22,8 @@ const labelMap: Record<string, string> = {
   RUNNING: "実行中",
   QUEUED: "待機中",
   FAILED: "失敗",
+  OK: "一致",
+  MISMATCH: "不一致",
   SHARED: "共有",
   ADMIN_ONLY: "管理者のみ",
 };

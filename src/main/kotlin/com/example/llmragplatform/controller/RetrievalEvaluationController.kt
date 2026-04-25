@@ -1,10 +1,13 @@
 package com.example.llmragplatform.controller
 
 import com.example.llmragplatform.generated.api.EvaluationApi
+import com.example.llmragplatform.generated.model.PromptInjectionEvaluationRequest
+import com.example.llmragplatform.generated.model.PromptInjectionEvaluationResponse
 import com.example.llmragplatform.generated.model.RetrievalEvaluationComparisonRequest
 import com.example.llmragplatform.generated.model.RetrievalEvaluationComparisonResponse
 import com.example.llmragplatform.generated.model.RetrievalEvaluationRequest
 import com.example.llmragplatform.generated.model.RetrievalEvaluationResponse
+import com.example.llmragplatform.service.PromptInjectionEvaluationService
 import com.example.llmragplatform.service.RetrievalEvaluationService
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class RetrievalEvaluationController(
     private val retrievalEvaluationService: RetrievalEvaluationService,
+    private val promptInjectionEvaluationService: PromptInjectionEvaluationService,
 ) : EvaluationApi {
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -37,6 +41,22 @@ class RetrievalEvaluationController(
     ): ResponseEntity<RetrievalEvaluationComparisonResponse> {
         return ResponseEntity.ok(
             retrievalEvaluationService.compareDefaultCases(retrievalEvaluationComparisonRequest)
+        )
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    override fun evaluatePromptInjection(
+        promptInjectionEvaluationRequest: PromptInjectionEvaluationRequest,
+    ): ResponseEntity<PromptInjectionEvaluationResponse> {
+        return ResponseEntity.ok(
+            promptInjectionEvaluationService.evaluate(promptInjectionEvaluationRequest)
+        )
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    override fun evaluateDefaultPromptInjectionCases(): ResponseEntity<PromptInjectionEvaluationResponse> {
+        return ResponseEntity.ok(
+            promptInjectionEvaluationService.evaluateDefaultCases()
         )
     }
 }

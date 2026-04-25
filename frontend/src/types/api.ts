@@ -87,6 +87,39 @@ export interface RetrievalEvaluationComparisonResponse {
   variantResults: RetrievalEvaluationVariantResult[];
 }
 
+export interface PromptInjectionEvaluationCaseRequest {
+  label?: string;
+  input: string;
+  expectedBlocked: boolean;
+}
+
+export interface PromptInjectionEvaluationRequest {
+  cases: PromptInjectionEvaluationCaseRequest[];
+}
+
+export interface PromptInjectionEvaluationCaseResult {
+  label?: string;
+  input: string;
+  expectedBlocked: boolean;
+  blocked: boolean;
+  matched: boolean;
+  detectionMessage?: string;
+  expectedOutcome: string;
+  actualOutcome: string;
+}
+
+export interface PromptInjectionEvaluationResponse {
+  totalCases: number;
+  expectedBlockedCases: number;
+  expectedAllowedCases: number;
+  correctlyBlockedCases: number;
+  correctlyAllowedCases: number;
+  detectionRate: number;
+  falsePositiveRate: number;
+  accuracy: number;
+  caseResults: PromptInjectionEvaluationCaseResult[];
+}
+
 export interface AdviceRequest {
   memberContext: {
     situation: string;

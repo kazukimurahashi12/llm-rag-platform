@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import {
+  PromptInjectionEvaluationResponse,
   RetrievalEvaluationComparisonRequest,
   RetrievalEvaluationComparisonResponse,
   RetrievalEvaluationResponse,
@@ -17,5 +18,10 @@ export async function compareRetrievalEvaluations(payload: RetrievalEvaluationCo
     "/v1/retrieval-evaluations/comparisons",
     payload,
   );
+  return response.data;
+}
+
+export async function fetchDefaultPromptInjectionEvaluation() {
+  const response = await apiClient.get<PromptInjectionEvaluationResponse>("/v1/prompt-injection-evaluations/default");
   return response.data;
 }
