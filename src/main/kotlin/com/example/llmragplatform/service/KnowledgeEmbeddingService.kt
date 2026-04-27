@@ -7,12 +7,21 @@ import com.example.llmragplatform.infrastructure.repository.PgVectorChunkSearchR
 import org.springframework.stereotype.Service
 
 @Service
+/**
+ * 文書 chunk や検索 query に対して embedding を生成するサービス。
+ */
 class KnowledgeEmbeddingService(
     private val ragProperties: RagProperties,
     private val embeddingClient: EmbeddingClient,
     private val pgVectorChunkSearchRepository: PgVectorChunkSearchRepository,
 ) {
 
+    /**
+     * chunk 一覧へ embedding を付与し、pgvector 列へ保存する。
+     *
+     * @param chunks embedding 付与対象の chunk 一覧。
+     * @return 実際に更新した chunk 件数。
+     */
     fun enrichChunks(chunks: List<KnowledgeDocumentChunk>): Int {
         // vector 検索が無効なら embedding は付与せず 0 件更新として返す。
         if (!ragProperties.vectorSearchEnabled) {
@@ -34,6 +43,12 @@ class KnowledgeEmbeddingService(
         return updatedCount
     }
 
+    /**
+     * 検索クエリ文字列を vector 検索用 embedding へ変換する。
+     *
+     * @param query embedding 化したい検索クエリ。
+     * @return vector 検索有効時は embedding、無効時は null。
+     */
     fun embedQuery(query: String): List<Float>? {
         // vector 検索が無効なら query embedding は作らず null を返す。
         if (!ragProperties.vectorSearchEnabled) {

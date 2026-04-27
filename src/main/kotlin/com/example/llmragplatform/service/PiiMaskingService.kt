@@ -3,6 +3,9 @@ package com.example.llmragplatform.service
 import org.springframework.stereotype.Service
 
 @Service
+/**
+ * 監査ログや prompt 保存前に PII をマスクするサービス。
+ */
 class PiiMaskingService {
 
     private val maskingRules = listOf(
@@ -11,6 +14,12 @@ class PiiMaskingService {
         Regex("""社員番号[:：]?\s*[A-Za-z0-9-]+""") to "社員番号: [MASKED_EMPLOYEE_ID]"
     )
 
+    /**
+     * 定義済みルールに従って文字列中の PII をマスクする。
+     *
+     * @param text マスク対象の文字列。
+     * @return PII を置換済みの文字列。
+     */
     fun maskText(text: String): String {
         return maskingRules.fold(text) { masked, (pattern, replacement) ->
             pattern.replace(masked, replacement)

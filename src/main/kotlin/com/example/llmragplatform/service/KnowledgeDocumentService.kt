@@ -18,6 +18,9 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 @Service
+/**
+ * ナレッジ文書の一覧取得、登録、再インデックス実行を担当するサービス。
+ */
 class KnowledgeDocumentService(
     private val ragProperties: RagProperties,
     private val knowledgeDocumentRepository: KnowledgeDocumentRepository,
@@ -27,6 +30,13 @@ class KnowledgeDocumentService(
     private val knowledgeAccessControlService: KnowledgeAccessControlService,
 ) {
 
+    /**
+     * 参照権限を考慮しながらナレッジ文書一覧をページングして返す。
+     *
+     * @param limit 取得件数上限。
+     * @param offset 取得開始位置。
+     * @return 文書一覧、総件数、適用済み limit/offset を含むレスポンス。
+     */
     fun getDocuments(limit: Int, offset: Int): KnowledgeDocumentListResponse {
         // limit は 1 以上 100 以下に丸める。
         val safeLimit = limit.coerceIn(1, 100)
@@ -51,6 +61,12 @@ class KnowledgeDocumentService(
     }
 
     @Transactional
+    /**
+     * ナレッジ文書を保存し、chunk 作成と embedding 付与まで実行する。
+     *
+     * @param request タイトル、本文、ACL を含む文書作成リクエスト。
+     * @return 保存済み文書のレスポンス。
+     */
     fun createDocument(request: KnowledgeDocumentCreateRequest): KnowledgeDocumentResponse {
         // まず文書本体を knowledge_documents へ保存する。
         val savedDocument = knowledgeDocumentRepository.save(
@@ -92,6 +108,11 @@ class KnowledgeDocumentService(
         return toResponse(savedDocument)
     }
 
+    /**
+     * 全ナレッジ文書の chunk を対象に embedding を再生成する。
+     *
+     * @return 全件再インデックスの処理結果。
+     */
     fun reindexDocuments(): KnowledgeReindexResponse {
         // 既存の chunk を全件取得する。
         val allChunks = knowledgeDocumentChunkRepository.findAll()
@@ -110,6 +131,12 @@ class KnowledgeDocumentService(
             .vectorSearchEnabled(ragProperties.vectorSearchEnabled)
     }
 
+    /**
+     * 指定文書の chunk だけを対象に embedding を再生成する。
+     *
+     * @param documentId 再インデックス対象の文書 ID。
+     * @return 単一文書再インデックスの処理結果。
+     */
     fun reindexDocument(documentId: Long): KnowledgeReindexResponse {
         // 指定 ID の文書を取得し、なければ 404 用例外を投げる。
         val document = knowledgeDocumentRepository.findById(documentId)
@@ -131,6 +158,12 @@ class KnowledgeDocumentService(
             .vectorSearchEnabled(ragProperties.vectorSearchEnabled)
     }
 
+    /**
+     * ナレッジ文書エンティティを API 応答モデルへ変換する。
+     *
+     * @param document 変換元のナレッジ文書エンティティ。
+     * @return 文書表示用レスポンス。
+     */
     private fun toResponse(document: KnowledgeDocument): KnowledgeDocumentResponse {
         // 内部エンティティを API 応答モデルへ変換する。
         return KnowledgeDocumentResponse()

@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 
 @Service
+/**
+ * RAG、guard、PII マスキング、監査ログ保存を含めて助言生成を実行するサービス。
+ */
 class AdviceServiceImpl(
     private val llmClient: LlmClient,
     private val promptManager: PromptManager,
@@ -20,6 +23,12 @@ class AdviceServiceImpl(
     @Value("\${openai.default-model}") private val defaultModel: String,
 ) : AdviceService {
 
+    /**
+     * 相談内容から RAG を使った助言を生成し、usage と根拠文書つきで返す。
+     *
+     * @param request メンバー状況、目標、出力設定を含む助言生成リクエスト。
+     * @return 生成した助言本文、usage、根拠文書一覧を含むレスポンス。
+     */
     override fun generateAdvice(request: AdviceRequest): AdviceResponse {
         // リクエストからメンバー状況を取り出す。
         val memberContext = request.memberContext

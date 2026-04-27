@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service
 import java.util.Locale
 
 @Service
+/**
+ * キーワード検索と pgvector 検索を組み合わせて根拠文書を取得するサービス。
+ */
 class KnowledgeRetrievalService(
     private val ragProperties: RagProperties,
     private val knowledgeDocumentChunkRepository: KnowledgeDocumentChunkRepository,
@@ -17,10 +20,24 @@ class KnowledgeRetrievalService(
     private val knowledgeRetrievalMetrics: KnowledgeRetrievalMetrics,
     private val knowledgeAccessControlService: KnowledgeAccessControlService,
 ) {
+    /**
+     * topK 指定だけで retrieval を実行する簡易入口。
+     *
+     * @param query 検索対象の相談文。
+     * @param topK 返したい文書件数。
+     * @return prompt 用文脈と根拠文書一覧を含む取得結果。
+     */
     fun retrieveKnowledge(query: String, topK: Int = ragPropertiesFallbackTopK): RetrievedKnowledge {
         return retrieveKnowledge(query, RetrievalOptions(topK = topK))
     }
 
+    /**
+     * vector 検索、threshold、rerank を考慮して retrieval を実行する。
+     *
+     * @param query 検索対象の相談文。
+     * @param options retrieval の検索条件。
+     * @return prompt 用文脈と根拠文書一覧を含む取得結果。
+     */
     fun retrieveKnowledge(query: String, options: RetrievalOptions): RetrievedKnowledge {
         // 呼び出し側から topK が渡されていればそれを使い、0 以下なら設定値を使う。
         val safeTopK = if (options.topK > 0) options.topK else ragProperties.topK
@@ -84,6 +101,14 @@ class KnowledgeRetrievalService(
         private const val ragPropertiesFallbackTopK = 0
     }
 
+    /**
+     * pgvector を使った近傍検索を実行し、threshold を適用した候補を返す。
+     *
+     * @param query 検索対象の相談文。
+     * @param topK 返却件数基準。
+     * @param options threshold や rerank の設定値。
+     * @return 距離スコア付きの vector マッチ結果一覧。
+     */
     private fun retrieveByVector(query: String, topK: Int, options: RetrievalOptions): List<VectorMatchedChunk> {
         // vector 検索が無効なら何も返さず、呼び出し元で fallback させる。
         if (!ragProperties.vectorSearchEnabled) {
@@ -138,6 +163,12 @@ class KnowledgeRetrievalService(
         return matchedChunks
     }
 
+    /**
+     * キーワード検索結果の chunk 一覧を共通の取得結果モデルへ変換する。
+     *
+     * @param chunks キーワード検索で取得した chunk 一覧。
+     * @return prompt 用文脈と根拠文書一覧を含む取得結果。
+     */
     private fun toRetrievedKnowledge(chunks: List<KnowledgeDocumentChunk>): RetrievedKnowledge {
         // キーワード検索結果を、API 応答と prompt 生成で使う共通モデルへ変換する。
         val documents = chunks.map { chunk ->
@@ -167,6 +198,12 @@ class KnowledgeRetrievalService(
         )
     }
 
+    /**
+     * vector 検索結果を距離スコアつきの取得結果モデルへ変換する。
+     *
+     * @param chunks vector 検索で取得した候補一覧。
+     * @return prompt 用文脈と根拠文書一覧を含む取得結果。
+     */
     private fun toRetrievedKnowledgeFromVector(chunks: List<VectorMatchedChunk>): RetrievedKnowledge {
         // vector 検索結果を、距離スコアつきの取得結果モデルへ変換する。
         val documents = chunks.map { matchedChunk ->
@@ -196,6 +233,12 @@ class KnowledgeRetrievalService(
         )
     }
 
+    /**
+     * 相談文からキーワード検索用の token 群を抽出する。
+     *
+     * @param query token 抽出対象の相談文。
+     * @return 単語 token と bigram token を統合した検索語一覧。
+     */
     private fun extractKeywords(query: String): List<String> {
         // 記号を空白に置き換えつつ小文字化し、検索用に正規化する。
         val normalizedQuery = query.lowercase(Locale.getDefault())
@@ -217,10 +260,25 @@ class KnowledgeRetrievalService(
         return (wordTokens + bigramTokens).distinct()
     }
 
+    /**
+     * cosine distance を利用者向けの 0.0 - 1.0 類似度へ変換する。
+     *
+     * @param distanceScore pgvector が返す cosine distance。
+     * @return 0.0 - 1.0 に丸めた近似類似度。
+     */
     private fun toSimilarityScore(distanceScore: Double): Double {
         return (1.0 - distanceScore).coerceIn(0.0, 1.0)
     }
 
+    /**
+     * vector 検索候補へ lexical score を加味した rerank を適用する。
+     *
+     * @param chunks rerank 対象の vector 候補一覧。
+     * @param keywords lexical rerank 用キーワード一覧。
+     * @param topK 最終返却件数。
+     * @param options rerank 有効化設定を含む検索条件。
+     * @return rerank 後の上位候補一覧。
+     */
     private fun rerankVectorMatchedChunks(
         chunks: List<VectorMatchedChunk>,
         keywords: List<String>,
@@ -238,6 +296,15 @@ class KnowledgeRetrievalService(
             .take(topK)
     }
 
+    /**
+     * キーワード検索候補へ lexical score ベースの rerank を適用する。
+     *
+     * @param chunks rerank 対象のキーワード候補一覧。
+     * @param keywords lexical rerank 用キーワード一覧。
+     * @param topK 最終返却件数。
+     * @param options rerank 有効化設定を含む検索条件。
+     * @return rerank 後の上位候補一覧。
+     */
     private fun rerankKeywordChunks(
         chunks: List<KnowledgeDocumentChunk>,
         keywords: List<String>,
@@ -253,6 +320,13 @@ class KnowledgeRetrievalService(
             .take(topK)
     }
 
+    /**
+     * 文書タイトルと本文へのキーワード一致数から lexical rerank score を計算する。
+     *
+     * @param chunk スコア計算対象の chunk。
+     * @param keywords 一致数を数えるキーワード一覧。
+     * @return title/content の一致数を重み付けしたスコア。
+     */
     private fun lexicalRerankScore(chunk: KnowledgeDocumentChunk, keywords: List<String>): Double {
         val normalizedTitle = chunk.knowledgeDocument.title.lowercase(Locale.getDefault())
         val normalizedContent = chunk.content.lowercase(Locale.getDefault())
@@ -261,6 +335,13 @@ class KnowledgeRetrievalService(
         return (titleMatches * 0.25) + (contentMatches * 0.1)
     }
 
+    /**
+     * rerank 有効時は候補母集団を広げるための取得件数を計算する。
+     *
+     * @param topK 最終返却件数。
+     * @param options rerank 有効化設定を含む検索条件。
+     * @return 初期候補として取得する件数。
+     */
     private fun candidateLimit(topK: Int, options: RetrievalOptions): Int {
         if (!isRerankEnabled(options)) {
             return topK
@@ -268,15 +349,35 @@ class KnowledgeRetrievalService(
         return topK * ragProperties.rerankCandidateMultiplier.coerceAtLeast(1)
     }
 
+    /**
+     * 類似度しきい値を満たしているかを判定する。
+     *
+     * @param similarityScore 判定対象の類似度スコア。
+     * @param options threshold 設定を含む検索条件。
+     * @return しきい値を満たす場合は true。
+     */
     private fun isSimilarityMatched(similarityScore: Double, options: RetrievalOptions): Boolean {
         val threshold = options.minSimilarityScore ?: ragProperties.minSimilarityScore ?: return true
         return similarityScore >= threshold
     }
 
+    /**
+     * rerank を有効化するかを options と既定設定から判定する。
+     *
+     * @param options rerank 設定を含む検索条件。
+     * @return rerank を有効にする場合は true。
+     */
     private fun isRerankEnabled(options: RetrievalOptions): Boolean {
         return options.rerankEnabled ?: ragProperties.rerankEnabled
     }
 
+    /**
+     * vector 検索候補とその距離情報を束ねる内部モデル。
+     *
+     * @property chunk 対応する chunk 実体。
+     * @property distanceScore pgvector が返した距離スコア。
+     * @property similarityScore 利用者向けに変換した近似類似度。
+     */
     private data class VectorMatchedChunk(
         val chunk: KnowledgeDocumentChunk,
         val distanceScore: Double,
@@ -284,6 +385,13 @@ class KnowledgeRetrievalService(
     )
 }
 
+/**
+ * retrieval 実行時に呼び出し単位で上書きできる検索条件。
+ *
+ * @property topK 返却件数。0 以下は既定設定を使う。
+ * @property minSimilarityScore 類似度しきい値。null の場合は既定設定を使う。
+ * @property rerankEnabled rerank 有効化フラグ。null の場合は既定設定を使う。
+ */
 data class RetrievalOptions(
     val topK: Int = 0,
     val minSimilarityScore: Double? = null,

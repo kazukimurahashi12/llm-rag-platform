@@ -15,11 +15,24 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 @Service
+/**
+ * 監査ログの一覧取得と詳細表示用レスポンス変換を担当するサービス。
+ */
 class AuditLogQueryService(
     private val auditLogRepository: AuditLogRepository,
     private val piiMaskingService: PiiMaskingService,
 ) {
 
+    /**
+     * 条件に一致する監査ログ一覧を取得し、ページング済みレスポンスへ変換する。
+     *
+     * @param limit 取得件数上限。
+     * @param offset 取得開始位置。
+     * @param model モデル名での絞り込み条件。
+     * @param from 作成日時の下限。
+     * @param to 作成日時の上限。
+     * @return 一覧項目と総件数を含む監査ログ一覧レスポンス。
+     */
     fun getAuditLogs(
         limit: Int,
         offset: Int,
@@ -40,6 +53,13 @@ class AuditLogQueryService(
             .offset(safeOffset)
     }
 
+    /**
+     * 監査ログ 1 件を取得し、権限に応じて内容をマスクして返す。
+     *
+     * @param auditLogId 取得したい監査ログ ID。
+     * @param includeSensitiveContent true の場合は全文を返し、false の場合はマスク済み内容を返す。
+     * @return 監査ログ詳細レスポンス。
+     */
     fun getAuditLogDetail(auditLogId: Long, includeSensitiveContent: Boolean): AuditLogDetailResponse {
         val log = auditLogRepository.findById(auditLogId)
             .orElseThrow { ResourceNotFoundException("Audit log not found: $auditLogId") }
@@ -57,6 +77,12 @@ class AuditLogQueryService(
             .createdAt(OffsetDateTime.ofInstant(log.createdAt, ZoneOffset.UTC))
     }
 
+    /**
+     * 監査ログエンティティを一覧表示用の簡略レスポンスへ変換する。
+     *
+     * @param log 変換元の監査ログエンティティ。
+     * @return 一覧表示用の監査ログ要約。
+     */
     private fun toSummaryItem(log: AuditLog): AuditLogSummaryItem {
         return AuditLogSummaryItem()
             .id(log.id)
@@ -69,6 +95,14 @@ class AuditLogQueryService(
             .createdAt(OffsetDateTime.ofInstant(log.createdAt, ZoneOffset.UTC))
     }
 
+    /**
+     * 監査ログ検索条件から JPA Specification を構築する。
+     *
+     * @param model モデル名での絞り込み条件。
+     * @param from 作成日時の下限。
+     * @param to 作成日時の上限。
+     * @return 指定条件に一致する監査ログ抽出用 Specification。
+     */
     private fun buildSpecification(
         model: String?,
         from: Instant?,
@@ -91,6 +125,13 @@ class AuditLogQueryService(
         }
     }
 
+    /**
+     * 権限に応じて表示可能な prompt 文字列へ変換する。
+     *
+     * @param log 表示対象の監査ログ。
+     * @param includeSensitiveContent true の場合は全文を返す。
+     * @return 表示用 prompt 文字列。
+     */
     private fun toVisiblePrompt(log: AuditLog, includeSensitiveContent: Boolean): String {
         if (includeSensitiveContent) {
             return log.prompt
@@ -98,6 +139,13 @@ class AuditLogQueryService(
         return abbreviateForOperator(piiMaskingService.maskText(log.prompt))
     }
 
+    /**
+     * 権限に応じて表示可能な response 文字列へ変換する。
+     *
+     * @param log 表示対象の監査ログ。
+     * @param includeSensitiveContent true の場合は全文を返す。
+     * @return 表示用 response 文字列。
+     */
     private fun toVisibleResponse(log: AuditLog, includeSensitiveContent: Boolean): String {
         if (includeSensitiveContent) {
             return log.response
@@ -105,6 +153,13 @@ class AuditLogQueryService(
         return abbreviateForOperator(piiMaskingService.maskText(log.response))
     }
 
+    /**
+     * operator 向け表示で長すぎる本文を省略する。
+     *
+     * @param value 省略対象の文字列。
+     * @param maxLength そのまま表示する最大文字数。
+     * @return 必要に応じて省略記号付きにした文字列。
+     */
     private fun abbreviateForOperator(value: String, maxLength: Int = 80): String {
         return if (value.length <= maxLength) {
             value
