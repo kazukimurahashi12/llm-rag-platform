@@ -9,8 +9,8 @@
       ]
     },
     {
-      "label": "review-expectation-alignment",
-      "query": "評価面談で期待値を先に揃えて納得感を高めたい",
+      "label": "one-on-one-feedback-guidance",
+      "query": "1on1で改善点を伝えるときに相手を責めず行動変容を促したい",
       "expectedDocumentTitles": [
         "1on1での改善指摘の基本方針"
       ]
