@@ -296,8 +296,15 @@ docker compose up -d postgres
 backend をローカル起動:
 
 ```bash
-OPENAI_API_KEY=your_api_key RAG_VECTOR_SEARCH_ENABLED=true ./gradlew bootRun
+OPENAI_API_KEY=your_api_key ./gradlew bootRun
 ```
+
+backend の標準 retrieval 設定:
+
+- `RAG_TOP_K=3`
+- `RAG_VECTOR_SEARCH_ENABLED=true`
+- `RAG_MIN_SIMILARITY_SCORE=0.4`
+- `RAG_RERANK_ENABLED=false`
 
 frontend をローカル起動:
 
@@ -574,6 +581,8 @@ retrieval しきい値を調整するときは、以下を見ます。
   - しきい値適用後に vector 0 件となり、keyword fallback へ落ちた回数
 
 `vector.accepted` が低く、`threshold.filtered` または `threshold.fallback` が増え続ける場合は、`rag.min-similarity-score` が厳しすぎる可能性があります。
+
+現在の標準値は `RAG_MIN_SIMILARITY_SCORE=0.4` です。標準評価ケースでは `0.5` に上げると Precision は下がり、fallback も増えやすくなるため、まずは `0.4` を基準に調整します。
 
 `/actuator/metrics` で一覧を確認する:
 

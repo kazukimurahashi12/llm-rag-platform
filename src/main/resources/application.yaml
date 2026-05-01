@@ -28,10 +28,10 @@ openai:
 
 rag:
   top-k: ${RAG_TOP_K:3}
-  vector-search-enabled: ${RAG_VECTOR_SEARCH_ENABLED:false}
+  vector-search-enabled: ${RAG_VECTOR_SEARCH_ENABLED:true}
   embedding-model: ${RAG_EMBEDDING_MODEL:text-embedding-3-small}
   embedding-dimensions: ${RAG_EMBEDDING_DIMENSIONS:1536}
-  min-similarity-score: ${RAG_MIN_SIMILARITY_SCORE:}
+  min-similarity-score: ${RAG_MIN_SIMILARITY_SCORE:0.4}
   rerank-enabled: ${RAG_RERANK_ENABLED:false}
   rerank-candidate-multiplier: ${RAG_RERANK_CANDIDATE_MULTIPLIER:3}
 
