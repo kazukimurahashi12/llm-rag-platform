@@ -1,6 +1,7 @@
 package com.example.llmragplatform.service
 
 import com.example.llmragplatform.config.RagProperties
+import com.example.llmragplatform.domain.entity.AceCategory
 import com.example.llmragplatform.domain.entity.KnowledgeDocument
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentChunk
@@ -53,8 +54,12 @@ class KnowledgeRetrievalServiceTest {
         val pgVectorChunkSearchRepository = mock<PgVectorChunkSearchRepository>()
         val retrievalMetrics = KnowledgeRetrievalMetrics(SimpleMeterRegistry())
         val knowledgeAccessControlService = mock<KnowledgeAccessControlService>()
+        val aceAnalysisService = mock<AceAnalysisService>()
         whenever(embeddingService.embedQuery(org.mockito.kotlin.any())).thenReturn(null)
         whenever(knowledgeAccessControlService.canAccess(org.mockito.kotlin.any())).thenReturn(true)
+        whenever(aceAnalysisService.analyze(org.mockito.kotlin.any<String>())).thenReturn(
+            AceAnalysisResult(AceCategory.EXPECTATION, "test", 1.0, 1.0, 2.0)
+        )
 
         val result = KnowledgeRetrievalService(
             ragProperties = RagProperties(vectorSearchEnabled = false),
@@ -62,7 +67,8 @@ class KnowledgeRetrievalServiceTest {
             knowledgeEmbeddingService = embeddingService,
             pgVectorChunkSearchRepository = pgVectorChunkSearchRepository,
             knowledgeRetrievalMetrics = retrievalMetrics,
-            knowledgeAccessControlService = knowledgeAccessControlService
+            knowledgeAccessControlService = knowledgeAccessControlService,
+            aceAnalysisService = aceAnalysisService
         ).retrieveKnowledge(
             query = "週報の提出が遅れているので1on1で伝えたい"
         )
@@ -72,6 +78,7 @@ class KnowledgeRetrievalServiceTest {
         assertEquals(1, result.documents.size)
         assertEquals("週報運用ガイド", result.documents.first().title)
         assertEquals(0, result.documents.first().chunkIndex)
+        assertEquals(AceCategory.EXPECTATION, result.documents.first().aceCategory)
         assertNull(result.documents.first().distanceScore)
         assertNull(result.documents.first().similarityScore)
     }
@@ -98,7 +105,11 @@ class KnowledgeRetrievalServiceTest {
         val meterRegistry = SimpleMeterRegistry()
         val retrievalMetrics = KnowledgeRetrievalMetrics(meterRegistry)
         val knowledgeAccessControlService = mock<KnowledgeAccessControlService>()
+        val aceAnalysisService = mock<AceAnalysisService>()
         whenever(knowledgeAccessControlService.canAccess(org.mockito.kotlin.any())).thenReturn(true)
+        whenever(aceAnalysisService.analyze(org.mockito.kotlin.any<String>())).thenReturn(
+            AceAnalysisResult(AceCategory.EXPECTATION, "test", 1.0, 1.0, 2.0)
+        )
 
         val pgVectorChunkSearchRepository = mock<PgVectorChunkSearchRepository>()
         whenever(pgVectorChunkSearchRepository.findNearestChunks(org.mockito.kotlin.any(), org.mockito.kotlin.eq(3))).thenReturn(
@@ -120,7 +131,8 @@ class KnowledgeRetrievalServiceTest {
             knowledgeEmbeddingService = embeddingService,
             pgVectorChunkSearchRepository = pgVectorChunkSearchRepository,
             knowledgeRetrievalMetrics = retrievalMetrics,
-            knowledgeAccessControlService = knowledgeAccessControlService
+            knowledgeAccessControlService = knowledgeAccessControlService,
+            aceAnalysisService = aceAnalysisService
         ).retrieveKnowledge(
             query = "週報の提出が遅れているので1on1で伝えたい"
         )
@@ -160,7 +172,11 @@ class KnowledgeRetrievalServiceTest {
         val meterRegistry = SimpleMeterRegistry()
         val retrievalMetrics = KnowledgeRetrievalMetrics(meterRegistry)
         val knowledgeAccessControlService = mock<KnowledgeAccessControlService>()
+        val aceAnalysisService = mock<AceAnalysisService>()
         whenever(knowledgeAccessControlService.canAccess(org.mockito.kotlin.any())).thenReturn(true)
+        whenever(aceAnalysisService.analyze(org.mockito.kotlin.any<String>())).thenReturn(
+            AceAnalysisResult(AceCategory.EXPECTATION, "test", 1.0, 1.0, 2.0)
+        )
 
         val pgVectorChunkSearchRepository = mock<PgVectorChunkSearchRepository>()
         whenever(pgVectorChunkSearchRepository.findNearestChunks(org.mockito.kotlin.any(), org.mockito.kotlin.eq(3))).thenReturn(
@@ -182,7 +198,8 @@ class KnowledgeRetrievalServiceTest {
             knowledgeEmbeddingService = embeddingService,
             pgVectorChunkSearchRepository = pgVectorChunkSearchRepository,
             knowledgeRetrievalMetrics = retrievalMetrics,
-            knowledgeAccessControlService = knowledgeAccessControlService
+            knowledgeAccessControlService = knowledgeAccessControlService,
+            aceAnalysisService = aceAnalysisService
         ).retrieveKnowledge(
             query = "週報の提出が遅れているので1on1で伝えたい"
         )
@@ -239,7 +256,11 @@ class KnowledgeRetrievalServiceTest {
         whenever(embeddingService.embedQuery(org.mockito.kotlin.any())).thenReturn(List(1536) { 0.1f })
         val retrievalMetrics = KnowledgeRetrievalMetrics(SimpleMeterRegistry())
         val knowledgeAccessControlService = mock<KnowledgeAccessControlService>()
+        val aceAnalysisService = mock<AceAnalysisService>()
         whenever(knowledgeAccessControlService.canAccess(org.mockito.kotlin.any())).thenReturn(true)
+        whenever(aceAnalysisService.analyze(org.mockito.kotlin.any<String>())).thenReturn(
+            AceAnalysisResult(AceCategory.EXPECTATION, "test", 1.0, 1.0, 2.0)
+        )
 
         val pgVectorChunkSearchRepository = mock<PgVectorChunkSearchRepository>()
         whenever(pgVectorChunkSearchRepository.findNearestChunks(org.mockito.kotlin.any(), org.mockito.kotlin.eq(3))).thenReturn(
@@ -274,7 +295,8 @@ class KnowledgeRetrievalServiceTest {
             knowledgeEmbeddingService = embeddingService,
             pgVectorChunkSearchRepository = pgVectorChunkSearchRepository,
             knowledgeRetrievalMetrics = retrievalMetrics,
-            knowledgeAccessControlService = knowledgeAccessControlService
+            knowledgeAccessControlService = knowledgeAccessControlService,
+            aceAnalysisService = aceAnalysisService
         ).retrieveKnowledge(
             query = "週報の提出が遅れているので1on1で改善したい"
         )

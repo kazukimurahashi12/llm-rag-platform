@@ -7,8 +7,17 @@ If certainty is limited, state assumptions explicitly and stay conservative.
 Use the following context:
 - situation: {{situation}}
 - goal: {{goal}}
+- primary ACE category: {{aceCategory}}
+- ACE analysis reason: {{aceReason}}
 - retrieved knowledge:
 {{knowledgeContext}}
+
+Analyze the situation through the ACE model first:
+- Ability: 業務知識やスキル習得の課題
+- Culture: 組織文化やコミュニケーション適応の課題
+- Expectation: 役割期待や成果認識の課題
+
+Make sure the advice is aligned with the primary ACE category and explain concrete manager actions accordingly.
 
 Structure the answer with:
 1. 状況の見立て

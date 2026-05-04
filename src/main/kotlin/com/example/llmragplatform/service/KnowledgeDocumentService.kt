@@ -1,6 +1,7 @@
 package com.example.llmragplatform.service
 
 import com.example.llmragplatform.config.RagProperties
+import com.example.llmragplatform.domain.entity.AceCategory
 import com.example.llmragplatform.domain.entity.KnowledgeDocument
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentChunk
@@ -83,7 +84,10 @@ class KnowledgeDocumentService(
                 allowedUsernames = request.allowedUsernames?.map { it.trim() }
                     ?.filter { it.isNotBlank() }
                     ?.toSet()
-                    ?: emptySet()
+                    ?: emptySet(),
+                // 未指定時は EXPECTATION を使い、ACE 軸で最低限の分類を持たせる。
+                aceCategory = request.aceCategory?.value?.let { AceCategory.valueOf(it) }
+                    ?: AceCategory.EXPECTATION
             )
         )
         // 保存した文書本文を chunk 分割し、chunk エンティティ一覧へ変換する。
@@ -177,6 +181,8 @@ class KnowledgeDocumentService(
             .accessScope(KnowledgeDocumentResponse.AccessScopeEnum.fromValue(document.accessScope.name))
             // 明示許可ユーザー名一覧を設定する。
             .allowedUsernames(document.allowedUsernames.toList())
+            // 文書の ACE 分類を設定する。
+            .aceCategory(KnowledgeDocumentResponse.AceCategoryEnum.fromValue(document.aceCategory.name))
             // 作成日時を UTC の OffsetDateTime へ変換して設定する。
             .createdAt(OffsetDateTime.ofInstant(document.createdAt, ZoneOffset.UTC))
     }

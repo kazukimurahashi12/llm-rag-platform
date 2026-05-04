@@ -4,6 +4,7 @@ import com.example.llmragplatform.config.OpenAiProperties
 import com.example.llmragplatform.config.RagProperties
 import com.example.llmragplatform.domain.LlmClient
 import com.example.llmragplatform.domain.LlmResponse
+import com.example.llmragplatform.domain.entity.AceCategory
 import com.example.llmragplatform.domain.entity.KnowledgeDocument
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentChunk
 import com.example.llmragplatform.exception.PromptInjectionDetectedException
@@ -52,13 +53,15 @@ class AdviceServiceImplTest {
             )
         )
         whenever(knowledgeEmbeddingService.embedQuery(org.mockito.kotlin.any())).thenReturn(null)
+        val aceAnalysisService = AceAnalysisService()
         val knowledgeRetrievalService = KnowledgeRetrievalService(
             ragProperties = RagProperties(vectorSearchEnabled = false),
             knowledgeDocumentChunkRepository = knowledgeDocumentChunkRepository,
             knowledgeEmbeddingService = knowledgeEmbeddingService,
             pgVectorChunkSearchRepository = pgVectorChunkSearchRepository,
             knowledgeRetrievalMetrics = knowledgeRetrievalMetrics,
-            knowledgeAccessControlService = knowledgeAccessControlService
+            knowledgeAccessControlService = knowledgeAccessControlService,
+            aceAnalysisService = aceAnalysisService
         )
         val promptInjectionGuardService = PromptInjectionGuardService()
         val costCalculator = CostCalculator(testOpenAiProperties())
@@ -68,6 +71,7 @@ class AdviceServiceImplTest {
             llmClient = llmClient,
             promptManager = promptManager,
             knowledgeRetrievalService = knowledgeRetrievalService,
+            aceAnalysisService = aceAnalysisService,
             promptInjectionGuardService = promptInjectionGuardService,
             costCalculator = costCalculator,
             piiMaskingService = piiMaskingService,
@@ -92,6 +96,8 @@ class AdviceServiceImplTest {
         assertEquals(1, response.retrievedDocuments.size)
         assertEquals("週報ガイド", response.retrievedDocuments[0].title)
         assertEquals(0, response.retrievedDocuments[0].chunkIndex)
+        assertEquals(AceCategory.ABILITY.name, response.aceAnalysis.primaryCategory.value)
+        assertEquals(AceCategory.EXPECTATION.name, response.retrievedDocuments[0].aceCategory.value)
         assertNull(response.retrievedDocuments[0].distanceScore)
         assertNull(response.retrievedDocuments[0].similarityScore)
         assertEquals("gpt-4o-mini", llmClient.capturedModel)
@@ -127,13 +133,15 @@ class AdviceServiceImplTest {
         whenever(knowledgeAccessControlService.canAccess(org.mockito.kotlin.any())).thenReturn(true)
         whenever(knowledgeDocumentChunkRepository.findAll()).thenReturn(emptyList())
         whenever(knowledgeEmbeddingService.embedQuery(org.mockito.kotlin.any())).thenReturn(null)
+        val aceAnalysisService = AceAnalysisService()
         val knowledgeRetrievalService = KnowledgeRetrievalService(
             ragProperties = RagProperties(vectorSearchEnabled = false),
             knowledgeDocumentChunkRepository = knowledgeDocumentChunkRepository,
             knowledgeEmbeddingService = knowledgeEmbeddingService,
             pgVectorChunkSearchRepository = pgVectorChunkSearchRepository,
             knowledgeRetrievalMetrics = knowledgeRetrievalMetrics,
-            knowledgeAccessControlService = knowledgeAccessControlService
+            knowledgeAccessControlService = knowledgeAccessControlService,
+            aceAnalysisService = aceAnalysisService
         )
         val promptInjectionGuardService = PromptInjectionGuardService()
         val costCalculator = CostCalculator(testOpenAiProperties())
@@ -143,6 +151,7 @@ class AdviceServiceImplTest {
             llmClient = llmClient,
             promptManager = promptManager,
             knowledgeRetrievalService = knowledgeRetrievalService,
+            aceAnalysisService = aceAnalysisService,
             promptInjectionGuardService = promptInjectionGuardService,
             costCalculator = costCalculator,
             piiMaskingService = piiMaskingService,
@@ -197,18 +206,21 @@ class AdviceServiceImplTest {
         whenever(knowledgeAccessControlService.canAccess(org.mockito.kotlin.any())).thenReturn(true)
         whenever(knowledgeDocumentChunkRepository.findAll()).thenReturn(emptyList())
         whenever(knowledgeEmbeddingService.embedQuery(org.mockito.kotlin.any())).thenReturn(null)
+        val aceAnalysisService = AceAnalysisService()
         val knowledgeRetrievalService = KnowledgeRetrievalService(
             ragProperties = RagProperties(vectorSearchEnabled = false),
             knowledgeDocumentChunkRepository = knowledgeDocumentChunkRepository,
             knowledgeEmbeddingService = knowledgeEmbeddingService,
             pgVectorChunkSearchRepository = pgVectorChunkSearchRepository,
             knowledgeRetrievalMetrics = knowledgeRetrievalMetrics,
-            knowledgeAccessControlService = knowledgeAccessControlService
+            knowledgeAccessControlService = knowledgeAccessControlService,
+            aceAnalysisService = aceAnalysisService
         )
         val service = AdviceServiceImpl(
             llmClient = llmClient,
             promptManager = promptManager,
             knowledgeRetrievalService = knowledgeRetrievalService,
+            aceAnalysisService = aceAnalysisService,
             promptInjectionGuardService = PromptInjectionGuardService(),
             costCalculator = CostCalculator(testOpenAiProperties()),
             piiMaskingService = PiiMaskingService(),

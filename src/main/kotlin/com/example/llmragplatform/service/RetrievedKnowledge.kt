@@ -1,5 +1,7 @@
 package com.example.llmragplatform.service
 
+import com.example.llmragplatform.domain.entity.AceCategory
+
 /**
  * retrieval の結果を prompt 用文脈と根拠文書一覧でまとめたモデル。
  *
@@ -18,6 +20,7 @@ data class RetrievedKnowledge(
  * @property title 元文書タイトル。
  * @property excerpt API 返却用の本文抜粋。
  * @property chunkIndex 文書内の chunk 順番。
+ * @property aceCategory 元文書の ACE 分類。
  * @property distanceScore vector 検索時の距離スコア。
  * @property similarityScore vector 検索時の利用者向け類似度スコア。
  */
@@ -26,6 +29,7 @@ data class RetrievedKnowledgeDocument(
     val title: String,
     val excerpt: String,
     val chunkIndex: Int,
+    val aceCategory: AceCategory,
     val distanceScore: Double?,
     val similarityScore: Double?,
 )

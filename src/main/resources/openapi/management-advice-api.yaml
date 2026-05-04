@@ -764,18 +764,36 @@ components:
       type: object
       required:
         - advice
+        - aceAnalysis
         - usage
         - retrievedDocuments
       properties:
         advice:
           type: string
           description: 生成されたアドバイス
+        aceAnalysis:
+          $ref: '#/components/schemas/AceAnalysis'
         usage:
           $ref: '#/components/schemas/UsageInfo'
         retrievedDocuments:
           type: array
           items:
             $ref: '#/components/schemas/RetrievedDocument'
+
+    AceAnalysis:
+      type: object
+      required:
+        - primaryCategory
+        - reason
+      properties:
+        primaryCategory:
+          type: string
+          enum:
+            - ABILITY
+            - CULTURE
+            - EXPECTATION
+        reason:
+          type: string
 
     UsageInfo:
       type: object
@@ -815,6 +833,12 @@ components:
           type: string
         chunkIndex:
           type: integer
+        aceCategory:
+          type: string
+          enum:
+            - ABILITY
+            - CULTURE
+            - EXPECTATION
         distanceScore:
           type: number
           format: double
@@ -932,6 +956,9 @@ components:
         - totalKnowledgeChunks
         - sharedKnowledgeDocuments
         - restrictedKnowledgeDocuments
+        - abilityKnowledgeDocuments
+        - cultureKnowledgeDocuments
+        - expectationKnowledgeDocuments
         - vectorAcceptedRetrievals
         - vectorThresholdFallbacks
         - vectorThresholdFilteredChunks
@@ -974,6 +1001,15 @@ components:
           type: integer
           format: int64
         restrictedKnowledgeDocuments:
+          type: integer
+          format: int64
+        abilityKnowledgeDocuments:
+          type: integer
+          format: int64
+        cultureKnowledgeDocuments:
+          type: integer
+          format: int64
+        expectationKnowledgeDocuments:
           type: integer
           format: int64
         vectorAcceptedRetrievals:
@@ -1299,11 +1335,18 @@ components:
       required:
         - title
         - content
+        - aceCategory
       properties:
         title:
           type: string
         content:
           type: string
+        aceCategory:
+          type: string
+          enum:
+            - ABILITY
+            - CULTURE
+            - EXPECTATION
         accessScope:
           type: string
           enum:
@@ -1323,6 +1366,7 @@ components:
         - content
         - accessScope
         - allowedUsernames
+        - aceCategory
         - createdAt
       properties:
         id:
@@ -1341,6 +1385,12 @@ components:
           type: array
           items:
             type: string
+        aceCategory:
+          type: string
+          enum:
+            - ABILITY
+            - CULTURE
+            - EXPECTATION
         createdAt:
           type: string
           format: date-time

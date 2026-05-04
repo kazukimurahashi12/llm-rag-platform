@@ -2,6 +2,7 @@ package com.example.llmragplatform.service
 
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentChunk
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
+import com.example.llmragplatform.domain.entity.AceCategory
 import com.example.llmragplatform.config.RagProperties
 import com.example.llmragplatform.infrastructure.repository.KnowledgeDocumentChunkRepository
 import com.example.llmragplatform.infrastructure.repository.PgVectorChunkSearchRepository
@@ -19,6 +20,7 @@ class KnowledgeRetrievalService(
     private val pgVectorChunkSearchRepository: PgVectorChunkSearchRepository,
     private val knowledgeRetrievalMetrics: KnowledgeRetrievalMetrics,
     private val knowledgeAccessControlService: KnowledgeAccessControlService,
+    private val aceAnalysisService: AceAnalysisService,
 ) {
     /**
      * topK 指定だけで retrieval を実行する簡易入口。
@@ -41,10 +43,12 @@ class KnowledgeRetrievalService(
     fun retrieveKnowledge(query: String, options: RetrievalOptions): RetrievedKnowledge {
         // 呼び出し側から topK が渡されていればそれを使い、0 以下なら設定値を使う。
         val safeTopK = if (options.topK > 0) options.topK else ragProperties.topK
+        // 指定がなければ query 自体を ACE 分析し、検索の優先カテゴリとして使う。
+        val preferredAceCategory = options.preferredAceCategory ?: aceAnalysisService.analyze(query).primaryCategory
         // rerank 用にも使うため、先にキーワードを抽出する。
         val keywords = extractKeywords(query)
         // まず vector 検索を試し、ヒットすればその結果を優先して返す。
-        val vectorMatchedChunks = retrieveByVector(query, safeTopK, options)
+        val vectorMatchedChunks = retrieveByVector(query, safeTopK, options, preferredAceCategory)
         if (vectorMatchedChunks.isNotEmpty()) {
             // vector 検索が最終採用された回数をメトリクスへ記録する。
             knowledgeRetrievalMetrics.recordVectorAccepted()
@@ -70,14 +74,15 @@ class KnowledgeRetrievalService(
                 // 文書タイトルと chunk 本文を連結し、小文字化して検索しやすい文字列を作る。
                 val searchableText = "${chunk.knowledgeDocument.title} ${chunk.content}".lowercase(Locale.getDefault())
                 // 抽出したキーワードのうち、何個含まれるかをスコアとして数える。
-                val score = keywords.count { keyword -> searchableText.contains(keyword) }
+                val score = keywords.count { keyword -> searchableText.contains(keyword) }.toDouble() +
+                    aceCategoryBoost(chunk.knowledgeDocument.aceCategory, preferredAceCategory)
                 // chunk と score を組にして後続処理へ渡す。
                 chunk to score
             }
             // 1 件も一致しない chunk は除外する。
-            .filter { (_, score) -> score > 0 }
+            .filter { (_, score) -> score > 0.0 }
             // スコアの高い順に並べる。
-            .sortedWith(compareByDescending<Pair<*, Int>> { it.second })
+            .sortedWith(compareByDescending<Pair<*, Double>> { it.second })
             // rerank 用に少し広めに候補を残す。
             .take(candidateLimit(safeTopK, options))
             // score を外し、chunk だけへ戻す。
@@ -109,7 +114,12 @@ class KnowledgeRetrievalService(
      * @param options threshold や rerank の設定値。
      * @return 距離スコア付きの vector マッチ結果一覧。
      */
-    private fun retrieveByVector(query: String, topK: Int, options: RetrievalOptions): List<VectorMatchedChunk> {
+    private fun retrieveByVector(
+        query: String,
+        topK: Int,
+        options: RetrievalOptions,
+        preferredAceCategory: AceCategory,
+    ): List<VectorMatchedChunk> {
         // vector 検索が無効なら何も返さず、呼び出し元で fallback させる。
         if (!ragProperties.vectorSearchEnabled) {
             return emptyList()
@@ -161,6 +171,10 @@ class KnowledgeRetrievalService(
             knowledgeRetrievalMetrics.recordThresholdFallback()
         }
         return matchedChunks
+            // 同一カテゴリを少し優先しつつ、距離順の良さも維持する。
+            .sortedByDescending { matchedChunk ->
+                matchedChunk.similarityScore + aceCategoryBoost(matchedChunk.chunk.knowledgeDocument.aceCategory, preferredAceCategory)
+            }
     }
 
     /**
@@ -182,6 +196,8 @@ class KnowledgeRetrievalService(
                 excerpt = chunk.content.take(200),
                 // どの chunk か分かるよう index を入れる。
                 chunkIndex = chunk.chunkIndex,
+                // 元文書の ACE 分類を返す。
+                aceCategory = chunk.knowledgeDocument.aceCategory,
                 // キーワード検索には距離スコアがないため null を設定する。
                 distanceScore = null,
                 // キーワード検索には類似度スコアもないため null を設定する。
@@ -217,6 +233,8 @@ class KnowledgeRetrievalService(
                 excerpt = matchedChunk.chunk.content.take(200),
                 // どの chunk か分かるよう index を入れる。
                 chunkIndex = matchedChunk.chunk.chunkIndex,
+                // 元文書の ACE 分類を返す。
+                aceCategory = matchedChunk.chunk.knowledgeDocument.aceCategory,
                 // pgvector の距離スコアをそのまま設定する。
                 distanceScore = matchedChunk.distanceScore,
                 // 利用者向けには 0.0 - 1.0 の近似類似度も返す。
@@ -336,6 +354,17 @@ class KnowledgeRetrievalService(
     }
 
     /**
+     * 相談の主要 ACE 分類と文書分類が一致するときの追加ブーストを返す。
+     *
+     * @param documentCategory 文書側の ACE 分類。
+     * @param preferredAceCategory 相談文から推定した主要 ACE 分類。
+     * @return 同カテゴリ優先のための加点。
+     */
+    private fun aceCategoryBoost(documentCategory: AceCategory, preferredAceCategory: AceCategory): Double {
+        return if (documentCategory == preferredAceCategory) 0.35 else 0.0
+    }
+
+    /**
      * rerank 有効時は候補母集団を広げるための取得件数を計算する。
      *
      * @param topK 最終返却件数。
@@ -396,4 +425,5 @@ data class RetrievalOptions(
     val topK: Int = 0,
     val minSimilarityScore: Double? = null,
     val rerankEnabled: Boolean? = null,
+    val preferredAceCategory: AceCategory? = null,
 )

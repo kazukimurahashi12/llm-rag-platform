@@ -34,6 +34,9 @@ class KnowledgeDocument(
     )
     @Column(name = "username", nullable = false, length = 255)
     val allowedUsernames: Set<String> = emptySet(),
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    val aceCategory: AceCategory = AceCategory.EXPECTATION,
     @Column(nullable = false)
     val createdAt: Instant = Instant.now(),
 )

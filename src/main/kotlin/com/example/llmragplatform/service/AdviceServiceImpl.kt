@@ -1,6 +1,7 @@
 package com.example.llmragplatform.service
 
 import com.example.llmragplatform.domain.LlmClient
+import com.example.llmragplatform.generated.model.AceAnalysis
 import com.example.llmragplatform.generated.model.AdviceRequest
 import com.example.llmragplatform.generated.model.AdviceResponse
 import com.example.llmragplatform.generated.model.RetrievedDocument
@@ -16,6 +17,7 @@ class AdviceServiceImpl(
     private val llmClient: LlmClient,
     private val promptManager: PromptManager,
     private val knowledgeRetrievalService: KnowledgeRetrievalService,
+    private val aceAnalysisService: AceAnalysisService,
     private val promptInjectionGuardService: PromptInjectionGuardService,
     private val costCalculator: CostCalculator,
     private val piiMaskingService: PiiMaskingService,
@@ -42,9 +44,12 @@ class AdviceServiceImpl(
         promptInjectionGuardService.validateUserInput(memberContext.situation, memberContext.targetGoal)
 
         // 相談内容と目標を検索クエリとして結合する。
+        val aceAnalysis = aceAnalysisService.analyze(memberContext.situation, memberContext.targetGoal)
+        // 相談内容と目標を検索クエリとして結合する。
         val retrievedKnowledge = knowledgeRetrievalService.retrieveKnowledge(
             // situation と targetGoal の両方を使って関連ナレッジを検索する。
-            query = "${memberContext.situation}\n${memberContext.targetGoal}"
+            query = "${memberContext.situation}\n${memberContext.targetGoal}",
+            options = RetrievalOptions(preferredAceCategory = aceAnalysis.primaryCategory)
         )
 
         // プロンプトテンプレートに実データを埋め込んで system prompt を構築する。
@@ -59,6 +64,10 @@ class AdviceServiceImpl(
                 "goal" to memberContext.targetGoal,
                 // 出力トーンをテンプレートへ渡す。
                 "tone" to tone,
+                // ACE 分析で見た主要カテゴリをテンプレートへ渡す。
+                "aceCategory" to aceAnalysis.primaryCategory.name,
+                // 主要カテゴリと判断した理由をテンプレートへ渡す。
+                "aceReason" to aceAnalysis.reason,
                 // 取得したナレッジ文脈をテンプレートへ渡す。
                 "knowledgeContext" to retrievedKnowledge.promptContext
             )
@@ -117,6 +126,12 @@ class AdviceServiceImpl(
         return AdviceResponse()
             // 生成した助言本文を設定する。
             .advice(llmResponse.content)
+            // 相談文の ACE 分析結果を設定する。
+            .aceAnalysis(
+                AceAnalysis()
+                    .primaryCategory(AceAnalysis.PrimaryCategoryEnum.fromValue(aceAnalysis.primaryCategory.name))
+                    .reason(aceAnalysis.reason)
+            )
             // 検索で取得した根拠文書一覧を設定する。
             .retrievedDocuments(
                 // 内部の取得結果を API モデルへ変換する。
@@ -131,6 +146,8 @@ class AdviceServiceImpl(
                         .excerpt(document.excerpt)
                         // chunk 番号を設定する。
                         .chunkIndex(document.chunkIndex)
+                        // ACE 分類を設定する。
+                        .aceCategory(RetrievedDocument.AceCategoryEnum.fromValue(document.aceCategory.name))
                         // vector 検索時の距離スコアを設定する。
                         .distanceScore(document.distanceScore)
                         // vector 検索時の利用者向け類似度スコアを設定する。

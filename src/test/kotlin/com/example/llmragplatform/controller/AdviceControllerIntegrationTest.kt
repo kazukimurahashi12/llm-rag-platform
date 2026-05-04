@@ -3,6 +3,7 @@ package com.example.llmragplatform.controller
 import com.example.llmragplatform.config.SecurityProperties
 import com.example.llmragplatform.domain.LlmClient
 import com.example.llmragplatform.domain.LlmResponse
+import com.example.llmragplatform.domain.entity.AceCategory
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentChunk
 import com.example.llmragplatform.infrastructure.repository.AuditLogRepository
@@ -105,6 +106,8 @@ class AdviceControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.advice").value("具体的なフィードバック案です。"))
+            .andExpect(jsonPath("$.aceAnalysis.primaryCategory").value("ABILITY"))
+            .andExpect(jsonPath("$.aceAnalysis.reason").isString)
             .andExpect(jsonPath("$.usage.model").value("gpt-4o-mini"))
             .andExpect(jsonPath("$.usage.promptTokens").value(120))
             .andExpect(jsonPath("$.usage.completionTokens").value(80))
@@ -168,6 +171,7 @@ class AdviceControllerIntegrationTest {
                 title = "週報運用ガイド",
                 content = "週報は毎週金曜までに提出し、1on1で振り返る。",
                 accessScope = KnowledgeDocumentAccessScope.SHARED,
+                aceCategory = AceCategory.ABILITY,
                 createdAt = Instant.parse("2026-04-07T00:00:00Z")
             )
         )
@@ -204,8 +208,10 @@ class AdviceControllerIntegrationTest {
                 )
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$.aceAnalysis.primaryCategory").value("ABILITY"))
             .andExpect(jsonPath("$.retrievedDocuments.length()").value(1))
             .andExpect(jsonPath("$.retrievedDocuments[0].title").value("週報運用ガイド"))
+            .andExpect(jsonPath("$.retrievedDocuments[0].aceCategory").value("ABILITY"))
             .andExpect(jsonPath("$.retrievedDocuments[0].excerpt").value("週報は毎週金曜までに提出し、1on1で振り返る。"))
             .andExpect(jsonPath("$.retrievedDocuments[0].chunkIndex").value(0))
     }
@@ -217,6 +223,7 @@ class AdviceControllerIntegrationTest {
                 title = "管理者専用ガイド",
                 content = "管理者だけが参照できる文書。",
                 accessScope = KnowledgeDocumentAccessScope.ADMIN_ONLY,
+                aceCategory = AceCategory.EXPECTATION,
                 createdAt = Instant.parse("2026-04-07T00:00:00Z")
             )
         )
@@ -264,6 +271,7 @@ class AdviceControllerIntegrationTest {
                 content = "運用担当だけが参照できる文書。",
                 accessScope = KnowledgeDocumentAccessScope.ADMIN_ONLY,
                 allowedUsernames = setOf("operator"),
+                aceCategory = AceCategory.CULTURE,
                 createdAt = Instant.parse("2026-04-07T00:00:00Z")
             )
         )
