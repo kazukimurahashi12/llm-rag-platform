@@ -113,6 +113,35 @@ export function DashboardPage() {
       </Grid>
 
       <SectionCard
+        title="ACE 分布"
+        description="ナレッジ文書が ACE のどの観点に偏っているかを確認します。"
+      >
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <MetricCard
+              label="Ability 文書"
+              value={formatNumber(summary?.abilityKnowledgeDocuments)}
+              helper="スキル習得・業務知識の支援に寄る文書"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <MetricCard
+              label="Culture 文書"
+              value={formatNumber(summary?.cultureKnowledgeDocuments)}
+              helper="文化適応・コミュニケーション支援に寄る文書"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <MetricCard
+              label="Expectation 文書"
+              value={formatNumber(summary?.expectationKnowledgeDocuments)}
+              helper="役割期待・目標整合に寄る文書"
+            />
+          </Grid>
+        </Grid>
+      </SectionCard>
+
+      <SectionCard
         title="再インデックス運用"
         description="ジョブの滞留、実行中、完了/失敗を同じ画面で確認します。"
       >

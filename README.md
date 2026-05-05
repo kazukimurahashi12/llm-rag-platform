@@ -23,6 +23,7 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 - 高精度: 社内ガイドラインやマネジメント知識を RAG で参照する
 - 高信頼: PII マスキング、プロンプトインジェクション対策、入力検証を組み込む
 - 高透明性: token、cost、latency、audit log を記録し、運用判断につなげる
+- ドメイン適合: ACE モデル（Ability / Culture / Expectation）で相談とナレッジを構造化する
 
 
 ## 画面
@@ -60,6 +61,8 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 - バリデーションエラーおよび外部 API エラーのハンドリングを実装
 - PostgreSQL + pgvector による vector 検索を実装
 - ナレッジ文書登録時の chunking / embedding 生成を実装
+- ナレッジ文書へ `aceCategory` を付与し、ACE 分析結果を advice response へ返却
+- query を ACE 分類し、同カテゴリ文書を retrieval で軽く優先する boost を実装
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
 - Micrometer / Prometheus 向けに再インデックスジョブのメトリクスを公開
 
@@ -104,6 +107,8 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 返却値:
 
 - `advice`
+- `aceAnalysis.primaryCategory`
+- `aceAnalysis.reason`
 - `usage.model`
 - `usage.promptTokens`
 - `usage.completionTokens`
@@ -120,6 +125,12 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 - `GET /v1/knowledge-documents/reindex-jobs/{jobId}`
 - `DELETE /v1/knowledge-documents/reindex-jobs/{jobId}`
 - `POST /v1/knowledge-documents/reindex-jobs/{jobId}/retry`
+
+Knowledge 文書は `aceCategory` を持ちます。
+
+- `ABILITY`: スキル習得、知識学習、業務理解
+- `CULTURE`: 文化適応、報連相、コミュニケーション
+- `EXPECTATION`: 役割期待、目標整合、評価観点
 
 ジョブ一覧 API は以下の絞り込みに対応しています。
 
@@ -306,6 +317,8 @@ backend の標準 retrieval 設定:
 - `RAG_MIN_SIMILARITY_SCORE=0.4`
 - `RAG_RERANK_ENABLED=false`
 
+ACE 対応後の retrieval では、query をルールベースで `ABILITY / CULTURE / EXPECTATION` に分類し、同じ `aceCategory` を持つナレッジ文書へ軽い boost をかけます。
+
 frontend をローカル起動:
 
 ```bash
@@ -441,6 +454,8 @@ curl -X POST http://localhost:8080/v1/management/advice \
 - 未認証: `SHARED` の文書だけ参照
 - `OPERATOR`: `SHARED` に加え、`allowedUsernames` に含まれる文書を参照
 - `ADMIN`: すべての文書を参照
+
+`aceAnalysis` には、相談内容の主要 ACE カテゴリと、その判断理由が返ります。
 
 ### 監査ログ API の確認
 
