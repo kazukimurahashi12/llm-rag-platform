@@ -37,21 +37,21 @@ export function AdviceForm({ value, onChange, onSubmit, loading }: AdviceFormPro
     <form onSubmit={handleSubmit}>
       <Stack spacing={2.5}>
         <TextField
-          label="状況"
+          label="状況（何が起きているか）"
           value={value.situation}
           onChange={(event) => onChange({ ...value, situation: event.target.value })}
           multiline
           minRows={6}
-          placeholder="支援が必要なマネジメント上の状況を入力してください。"
+          placeholder="何が起きているかを入力してください。"
           required
         />
         <TextField
-          label="目標"
+          label="目標（どう着地させたいか）"
           value={value.targetGoal}
           onChange={(event) => onChange({ ...value, targetGoal: event.target.value })}
           multiline
           minRows={4}
-          placeholder="達成したい行動変容やチームの状態を入力してください。"
+          placeholder="どう着地させたいかを入力してください。"
           required
         />
         <Stack direction="row" spacing={2}>
