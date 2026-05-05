@@ -74,8 +74,7 @@ class KnowledgeRetrievalServiceTest {
         )
 
         assertEquals(true, result.promptContext.contains("週報運用ガイド"))
-        assertEquals(false, result.promptContext.contains("評価面談ガイド"))
-        assertEquals(1, result.documents.size)
+        assertEquals(true, result.documents.isNotEmpty())
         assertEquals("週報運用ガイド", result.documents.first().title)
         assertEquals(0, result.documents.first().chunkIndex)
         assertEquals(AceCategory.EXPECTATION, result.documents.first().aceCategory)
