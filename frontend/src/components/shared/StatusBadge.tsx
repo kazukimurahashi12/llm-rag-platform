@@ -14,6 +14,9 @@ const colorMap: Record<string, "success" | "info" | "error" | "warning" | "defau
   MISMATCH: "error",
   SHARED: "success",
   ADMIN_ONLY: "warning",
+  ABILITY: "info",
+  CULTURE: "success",
+  EXPECTATION: "warning",
 };
 
 const labelMap: Record<string, string> = {
@@ -26,6 +29,9 @@ const labelMap: Record<string, string> = {
   MISMATCH: "不一致",
   SHARED: "共有",
   ADMIN_ONLY: "管理者のみ",
+  ABILITY: "Ability",
+  CULTURE: "Culture",
+  EXPECTATION: "Expectation",
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {

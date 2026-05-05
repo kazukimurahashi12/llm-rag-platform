@@ -4,6 +4,10 @@ import { AdviceRequest, AdviceResponse } from "../types/api";
 
 const adviceSchema = z.object({
   advice: z.string(),
+  aceAnalysis: z.object({
+    primaryCategory: z.enum(["ABILITY", "CULTURE", "EXPECTATION"]),
+    reason: z.string(),
+  }),
   usage: z.object({
     model: z.string(),
     promptTokens: z.number(),
@@ -17,6 +21,7 @@ const adviceSchema = z.object({
       title: z.string(),
       excerpt: z.string(),
       chunkIndex: z.number(),
+      aceCategory: z.enum(["ABILITY", "CULTURE", "EXPECTATION"]).optional(),
       distanceScore: z.number().optional(),
       similarityScore: z.number().optional(),
     }),

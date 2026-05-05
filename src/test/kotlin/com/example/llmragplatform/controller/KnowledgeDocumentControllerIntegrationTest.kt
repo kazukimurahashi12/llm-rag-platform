@@ -72,12 +72,14 @@ class KnowledgeDocumentControllerIntegrationTest {
                     title = "評価面談ガイド",
                     content = "期待値を先に揃える。",
                     accessScope = KnowledgeDocumentAccessScope.ADMIN_ONLY,
+                    aceCategory = com.example.llmragplatform.domain.entity.AceCategory.EXPECTATION,
                     createdAt = Instant.parse("2026-04-07T08:00:00Z")
                 ),
                 KnowledgeDocument(
                     title = "週報運用ガイド",
                     content = "週報は毎週金曜までに提出する。",
                     accessScope = KnowledgeDocumentAccessScope.SHARED,
+                    aceCategory = com.example.llmragplatform.domain.entity.AceCategory.ABILITY,
                     createdAt = Instant.parse("2026-04-07T09:00:00Z")
                 )
             )
@@ -105,6 +107,7 @@ class KnowledgeDocumentControllerIntegrationTest {
                     {
                       "title": "週報運用ガイド",
                       "content": "週報は毎週金曜までに提出し、1on1で振り返る。",
+                      "aceCategory": "ABILITY",
                       "accessScope": "ADMIN_ONLY",
                       "allowedUsernames": ["test-operator"]
                     }
@@ -114,6 +117,7 @@ class KnowledgeDocumentControllerIntegrationTest {
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.title").value("週報運用ガイド"))
             .andExpect(jsonPath("$.content").value("週報は毎週金曜までに提出し、1on1で振り返る。"))
+            .andExpect(jsonPath("$.aceCategory").value("ABILITY"))
             .andExpect(jsonPath("$.accessScope").value("ADMIN_ONLY"))
             .andExpect(jsonPath("$.allowedUsernames[0]").value("test-operator"))
 
@@ -129,7 +133,7 @@ class KnowledgeDocumentControllerIntegrationTest {
             post("/v1/knowledge-documents")
                 .with(httpBasic("test-operator", "test-operator-password"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"title":"x","content":"y"}""")
+                .content("""{"title":"x","content":"y","aceCategory":"EXPECTATION"}""")
         )
             .andExpect(status().isForbidden)
     }
@@ -235,6 +239,7 @@ class KnowledgeDocumentControllerIntegrationTest {
             .andExpect(jsonPath("$.offset").value(0))
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].title").value("週報運用ガイド"))
+            .andExpect(jsonPath("$.items[0].aceCategory").value("ABILITY"))
     }
 
     @Test
@@ -250,6 +255,7 @@ class KnowledgeDocumentControllerIntegrationTest {
             .andExpect(jsonPath("$.totalCount").value(1))
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].title").value("週報運用ガイド"))
+            .andExpect(jsonPath("$.items[0].aceCategory").value("ABILITY"))
     }
 
     @Test

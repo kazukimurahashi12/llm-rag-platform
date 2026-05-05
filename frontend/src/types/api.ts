@@ -27,6 +27,9 @@ export interface DashboardSummaryResponse {
   totalKnowledgeChunks: number;
   sharedKnowledgeDocuments: number;
   restrictedKnowledgeDocuments: number;
+  abilityKnowledgeDocuments: number;
+  cultureKnowledgeDocuments: number;
+  expectationKnowledgeDocuments: number;
   vectorAcceptedRetrievals: number;
   vectorThresholdFallbacks: number;
   vectorThresholdFilteredChunks: number;
@@ -144,12 +147,21 @@ export interface RetrievedDocument {
   title: string;
   excerpt: string;
   chunkIndex: number;
+  aceCategory?: AceCategory;
   distanceScore?: number;
   similarityScore?: number;
 }
 
+export type AceCategory = "ABILITY" | "CULTURE" | "EXPECTATION";
+
+export interface AceAnalysis {
+  primaryCategory: AceCategory;
+  reason: string;
+}
+
 export interface AdviceResponse {
   advice: string;
+  aceAnalysis: AceAnalysis;
   usage: UsageInfo;
   retrievedDocuments: RetrievedDocument[];
 }
@@ -191,6 +203,7 @@ export interface KnowledgeDocumentResponse {
   id: number;
   title: string;
   content: string;
+  aceCategory: AceCategory;
   accessScope: KnowledgeAccessScope;
   allowedUsernames: string[];
   createdAt: string;
@@ -206,6 +219,7 @@ export interface KnowledgeDocumentListResponse {
 export interface KnowledgeDocumentCreateRequest {
   title: string;
   content: string;
+  aceCategory: AceCategory;
   accessScope: KnowledgeAccessScope;
   allowedUsernames: string[];
 }

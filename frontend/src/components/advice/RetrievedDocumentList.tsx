@@ -2,6 +2,7 @@ import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import { Card, CardContent, Divider, Stack, Typography } from "@mui/material";
 import { RetrievedDocument } from "../../types/api";
 import { formatNumber } from "../../lib/format";
+import { StatusBadge } from "../shared/StatusBadge";
 
 export function RetrievedDocumentList({ items }: { items: RetrievedDocument[] }) {
   if (items.length === 0) {
@@ -27,6 +28,7 @@ export function RetrievedDocumentList({ items }: { items: RetrievedDocument[] })
               <Stack direction="row" spacing={1} alignItems="center">
                 <MenuBookRoundedIcon color="primary" fontSize="small" />
                 <Typography fontWeight={700}>{firstChunk.title}</Typography>
+                {firstChunk.aceCategory ? <StatusBadge status={firstChunk.aceCategory} /> : null}
               </Stack>
               <Typography color="text.secondary" variant="body2">
                 この文書から {documentChunks.length} 件のチャンクが参照されています。

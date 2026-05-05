@@ -1,5 +1,6 @@
 package com.example.llmragplatform.service
 
+import com.example.llmragplatform.domain.entity.AceCategory
 import com.example.llmragplatform.generated.model.RetrievalEvaluationCaseRequest
 import com.example.llmragplatform.generated.model.RetrievalEvaluationComparisonRequest
 import com.example.llmragplatform.generated.model.RetrievalEvaluationVariantRequest
@@ -26,6 +27,7 @@ class RetrievalEvaluationServiceTest {
                         title = "一般ガイド",
                         excerpt = "excerpt",
                         chunkIndex = 0,
+                        aceCategory = AceCategory.EXPECTATION,
                         distanceScore = null,
                         similarityScore = null
                     ),
@@ -34,6 +36,7 @@ class RetrievalEvaluationServiceTest {
                         title = "週報運用ガイド",
                         excerpt = "excerpt",
                         chunkIndex = 0,
+                        aceCategory = AceCategory.EXPECTATION,
                         distanceScore = null,
                         similarityScore = null
                     )
@@ -49,6 +52,7 @@ class RetrievalEvaluationServiceTest {
                         title = "1on1 ガイド",
                         excerpt = "excerpt",
                         chunkIndex = 0,
+                        aceCategory = AceCategory.CULTURE,
                         distanceScore = null,
                         similarityScore = null
                     )

@@ -1,6 +1,7 @@
 package com.example.llmragplatform.service
 
 import com.example.llmragplatform.domain.entity.KnowledgeReindexJobStatus
+import com.example.llmragplatform.domain.entity.AceCategory
 import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
 import com.example.llmragplatform.generated.model.DashboardSummaryResponse
 import com.example.llmragplatform.infrastructure.repository.AuditLogRepository
@@ -50,6 +51,10 @@ class DashboardQueryService(
             listOf(KnowledgeDocumentAccessScope.SHARED),
         )
         val restrictedKnowledgeDocuments = totalKnowledgeDocuments - sharedKnowledgeDocuments
+        // 文書を ACE 分類別にも集計し、ナレッジの偏りを可視化する。
+        val abilityKnowledgeDocuments = knowledgeDocumentRepository.countByAceCategory(AceCategory.ABILITY)
+        val cultureKnowledgeDocuments = knowledgeDocumentRepository.countByAceCategory(AceCategory.CULTURE)
+        val expectationKnowledgeDocuments = knowledgeDocumentRepository.countByAceCategory(AceCategory.EXPECTATION)
 
         // DB 集計値とメトリクス値を 1 つのダッシュボードレスポンスへまとめる。
         return DashboardSummaryResponse()
@@ -66,6 +71,9 @@ class DashboardQueryService(
             .totalKnowledgeChunks(knowledgeDocumentChunkRepository.count())
             .sharedKnowledgeDocuments(sharedKnowledgeDocuments)
             .restrictedKnowledgeDocuments(restrictedKnowledgeDocuments)
+            .abilityKnowledgeDocuments(abilityKnowledgeDocuments)
+            .cultureKnowledgeDocuments(cultureKnowledgeDocuments)
+            .expectationKnowledgeDocuments(expectationKnowledgeDocuments)
             .vectorAcceptedRetrievals(counterValue("knowledge.retrieval.vector.accepted"))
             .vectorThresholdFallbacks(counterValue("knowledge.retrieval.vector.threshold.fallback"))
             .vectorThresholdFilteredChunks(counterValue("knowledge.retrieval.vector.threshold.filtered"))

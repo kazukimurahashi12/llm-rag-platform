@@ -28,6 +28,7 @@ export function KnowledgePage() {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [aceCategory, setAceCategory] = useState<"ABILITY" | "CULTURE" | "EXPECTATION">("EXPECTATION");
   const [accessScope, setAccessScope] = useState<"SHARED" | "ADMIN_ONLY">("SHARED");
 
   const listQuery = useQuery({
@@ -36,10 +37,11 @@ export function KnowledgePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createKnowledgeDocument({ title, content, accessScope, allowedUsernames: [] }),
+    mutationFn: () => createKnowledgeDocument({ title, content, aceCategory, accessScope, allowedUsernames: [] }),
     onSuccess: async () => {
       setTitle("");
       setContent("");
+      setAceCategory("EXPECTATION");
       await queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] });
     },
   });
@@ -71,6 +73,13 @@ export function KnowledgePage() {
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField fullWidth label="タイトル" value={title} onChange={(event) => setTitle(event.target.value)} />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField select fullWidth label="ACE分類" value={aceCategory} onChange={(event) => setAceCategory(event.target.value as "ABILITY" | "CULTURE" | "EXPECTATION")}>
+              <MenuItem value="ABILITY">Ability</MenuItem>
+              <MenuItem value="CULTURE">Culture</MenuItem>
+              <MenuItem value="EXPECTATION">Expectation</MenuItem>
+            </TextField>
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField select fullWidth label="公開範囲" value={accessScope} onChange={(event) => setAccessScope(event.target.value as "SHARED" | "ADMIN_ONLY")}>
@@ -118,6 +127,7 @@ export function KnowledgePage() {
             <TableHead>
               <TableRow>
                 <TableCell>タイトル</TableCell>
+                <TableCell>ACE分類</TableCell>
                 <TableCell>公開範囲</TableCell>
                 <TableCell>作成日時</TableCell>
                 <TableCell>許可ユーザー</TableCell>
@@ -135,6 +145,9 @@ export function KnowledgePage() {
                         {item.content.length > 120 ? "..." : ""}
                       </Typography>
                     </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={item.aceCategory} />
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={item.accessScope} />

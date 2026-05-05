@@ -41,6 +41,14 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
       </Box>
 
       <Stack spacing={1.25}>
+        <Typography variant="subtitle1">ACE 分析</Typography>
+        <Stack direction="row" flexWrap="wrap" gap={1}>
+          <UsagePill label="主要カテゴリ" value={data.aceAnalysis.primaryCategory} />
+        </Stack>
+        <Typography color="text.secondary">{data.aceAnalysis.reason}</Typography>
+      </Stack>
+
+      <Stack spacing={1.25}>
         <Typography variant="subtitle1">使用量</Typography>
         <Stack direction="row" flexWrap="wrap" gap={1}>
           <UsagePill label="モデル" value={data.usage.model} />

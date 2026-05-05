@@ -2,9 +2,14 @@ package com.example.llmragplatform.controller
 
 import com.example.llmragplatform.config.SecurityProperties
 import com.example.llmragplatform.domain.entity.AuditLog
+import com.example.llmragplatform.domain.entity.AceCategory
+import com.example.llmragplatform.domain.entity.KnowledgeDocument
+import com.example.llmragplatform.domain.entity.KnowledgeDocumentAccessScope
 import com.example.llmragplatform.domain.entity.KnowledgeReindexJob
 import com.example.llmragplatform.domain.entity.KnowledgeReindexJobStatus
 import com.example.llmragplatform.infrastructure.repository.AuditLogRepository
+import com.example.llmragplatform.infrastructure.repository.KnowledgeDocumentChunkRepository
+import com.example.llmragplatform.infrastructure.repository.KnowledgeDocumentRepository
 import com.example.llmragplatform.infrastructure.repository.KnowledgeReindexJobRepository
 import com.example.llmragplatform.security.JwtTokenService
 import org.junit.jupiter.api.BeforeEach
@@ -47,6 +52,12 @@ class DashboardControllerIntegrationTest {
     private lateinit var knowledgeReindexJobRepository: KnowledgeReindexJobRepository
 
     @Autowired
+    private lateinit var knowledgeDocumentRepository: KnowledgeDocumentRepository
+
+    @Autowired
+    private lateinit var knowledgeDocumentChunkRepository: KnowledgeDocumentChunkRepository
+
+    @Autowired
     private lateinit var jwtTokenService: JwtTokenService
 
     @Autowired
@@ -55,7 +66,17 @@ class DashboardControllerIntegrationTest {
     @BeforeEach
     fun setUp() {
         knowledgeReindexJobRepository.deleteAll()
+        knowledgeDocumentChunkRepository.deleteAll()
+        knowledgeDocumentRepository.deleteAll()
         auditLogRepository.deleteAll()
+
+        knowledgeDocumentRepository.saveAll(
+            listOf(
+                KnowledgeDocument(title = "スキルガイド", content = "学習手順", accessScope = KnowledgeDocumentAccessScope.SHARED, aceCategory = AceCategory.ABILITY),
+                KnowledgeDocument(title = "文化ガイド", content = "報連相の作法", accessScope = KnowledgeDocumentAccessScope.SHARED, aceCategory = AceCategory.CULTURE),
+                KnowledgeDocument(title = "期待値ガイド", content = "役割期待を揃える", accessScope = KnowledgeDocumentAccessScope.ADMIN_ONLY, aceCategory = AceCategory.EXPECTATION)
+            )
+        )
 
         auditLogRepository.saveAll(
             listOf(
@@ -126,10 +147,13 @@ class DashboardControllerIntegrationTest {
             .andExpect(jsonPath("$.queuedReindexJobs").value(0))
             .andExpect(jsonPath("$.runningReindexJobs").value(0))
             .andExpect(jsonPath("$.totalReindexJobs").value(3))
-            .andExpect(jsonPath("$.totalKnowledgeDocuments").value(0))
+            .andExpect(jsonPath("$.totalKnowledgeDocuments").value(3))
             .andExpect(jsonPath("$.totalKnowledgeChunks").value(0))
-            .andExpect(jsonPath("$.sharedKnowledgeDocuments").value(0))
-            .andExpect(jsonPath("$.restrictedKnowledgeDocuments").value(0))
+            .andExpect(jsonPath("$.sharedKnowledgeDocuments").value(2))
+            .andExpect(jsonPath("$.restrictedKnowledgeDocuments").value(1))
+            .andExpect(jsonPath("$.abilityKnowledgeDocuments").value(1))
+            .andExpect(jsonPath("$.cultureKnowledgeDocuments").value(1))
+            .andExpect(jsonPath("$.expectationKnowledgeDocuments").value(1))
             .andExpect(jsonPath("$.vectorAcceptedRetrievals").value(0.0))
             .andExpect(jsonPath("$.vectorThresholdFallbacks").value(0.0))
             .andExpect(jsonPath("$.vectorThresholdFilteredChunks").value(0.0))
