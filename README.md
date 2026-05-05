@@ -30,7 +30,8 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 
 <img width="1427" height="687" alt="スクリーンショット 2026-04-22 13 02 11" src="https://github.com/user-attachments/assets/227453f9-1ded-4c11-8dd0-a09aa0e4ee48" />
 
-<img width="1432" height="686" alt="スクリーンショット 2026-04-22 13 02 46" src="https://github.com/user-attachments/assets/9cf567cb-3a05-46af-814c-49c8707cf88b" />
+<img width="1437" height="690" alt="スクリーンショット 2026-05-05 19 03 19" src="https://github.com/user-attachments/assets/a5fe0c7e-9f9d-4fdd-b6a2-24b7456c2036" />
+
 
 <img width="1438" height="606" alt="スクリーンショット 2026-04-22 13 03 01" src="https://github.com/user-attachments/assets/d01005c5-8fac-4381-a1a2-007ecdcba0b0" />
 
