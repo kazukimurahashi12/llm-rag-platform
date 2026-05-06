@@ -90,7 +90,12 @@ export function EvaluationPage() {
           <MetricCard label="Hit Rate" value={formatPercent(evaluation?.hitRate)} helper="期待文書を1件以上拾えた割合" icon={<InsightsRoundedIcon color="primary" />} />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="MRR" value={formatNumber(evaluation?.meanReciprocalRank, 3)} helper="期待文書が上位に出ているか" icon={<BarChartRoundedIcon color="primary" />} />
+          <MetricCard
+            label="MRR（期待する文書が上位に出ているかの平均指標）"
+            value={formatNumber(evaluation?.meanReciprocalRank, 3)}
+            helper="期待文書が上位に出るほど高くなります"
+            icon={<BarChartRoundedIcon color="primary" />}
+          />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
           <MetricCard label="Recall@K" value={formatPercent(evaluation?.averageRecallAtK)} helper={`topK=${evaluation?.topK ?? "-"}`} icon={<ChecklistRoundedIcon color="primary" />} />
