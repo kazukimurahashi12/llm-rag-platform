@@ -66,7 +66,7 @@ ONBOARD Guide API は、ONBOARD AI プロダクトへの組み込みを想定し
 - query を ACE 分類し、同カテゴリ文書を retrieval で軽く優先する boost を実装
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
 - Micrometer / Prometheus 向けに再インデックスジョブのメトリクスを公開
-- 今後の実装予定として、冪等キー（Idempotency-Key）とサーキットブレイカーの導入を検討
+- 今後の実装予定として、冪等キー（Idempotency-Key）とサーキットブレイカーの導入を検討（拡張予定）
 
 ## 技術スタック
 

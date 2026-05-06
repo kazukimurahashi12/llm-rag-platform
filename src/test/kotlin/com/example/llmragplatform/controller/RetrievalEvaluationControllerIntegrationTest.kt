@@ -164,8 +164,8 @@ class RetrievalEvaluationControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.topK").value(2))
-            .andExpect(jsonPath("$.totalCases").value(3))
-            .andExpect(jsonPath("$.caseResults.length()").value(3))
+            .andExpect(jsonPath("$.totalCases").value(12))
+            .andExpect(jsonPath("$.caseResults.length()").value(12))
     }
 
     @Test

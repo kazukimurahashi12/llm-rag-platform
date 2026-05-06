@@ -106,7 +106,7 @@ class RetrievalEvaluationServiceTest {
         val result = RetrievalEvaluationService(knowledgeRetrievalService, ObjectMapper()).evaluateDefaultCases(topK = 2)
 
         assertEquals(2, result.topK)
-        assertEquals(3, result.totalCases)
+        assertEquals(12, result.totalCases)
         assertEquals(0, result.matchedCases)
     }
 
