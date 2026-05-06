@@ -9,4 +9,5 @@ interface KnowledgeDocumentChunkRepository : JpaRepository<KnowledgeDocumentChun
     fun findAllByKnowledgeDocumentOrderByChunkIndexAsc(knowledgeDocument: KnowledgeDocument): List<KnowledgeDocumentChunk>
     fun findAllByKnowledgeDocumentAccessScopeIn(accessScopes: Collection<KnowledgeDocumentAccessScope>): List<KnowledgeDocumentChunk>
     fun findAllByIdInAndKnowledgeDocumentAccessScopeIn(ids: Collection<Long>, accessScopes: Collection<KnowledgeDocumentAccessScope>): List<KnowledgeDocumentChunk>
+    fun deleteAllByKnowledgeDocument(knowledgeDocument: KnowledgeDocument)
 }

@@ -120,6 +120,7 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 
 - `GET /v1/knowledge-documents`
 - `POST /v1/knowledge-documents`
+- `PUT /v1/knowledge-documents/{knowledgeDocumentId}`
 - `POST /v1/knowledge-documents/reindex`
 - `POST /v1/knowledge-documents/{knowledgeDocumentId}/reindex`
 - `GET /v1/knowledge-documents/reindex-jobs`
@@ -132,6 +133,8 @@ Knowledge 文書は `aceCategory` を持ちます。
 - `ABILITY`: スキル習得、知識学習、業務理解
 - `CULTURE`: 文化適応、報連相、コミュニケーション
 - `EXPECTATION`: 役割期待、目標整合、評価観点
+
+`PUT /v1/knowledge-documents/{knowledgeDocumentId}` では、title / content / accessScope / allowedUsernames / aceCategory を更新できます。更新時は対象文書の chunk を全再生成し、vector 検索が有効な場合は embedding も同期で再作成します。
 
 ジョブ一覧 API は以下の絞り込みに対応しています。
 

@@ -207,6 +207,7 @@ export interface KnowledgeDocumentResponse {
   accessScope: KnowledgeAccessScope;
   allowedUsernames: string[];
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface KnowledgeDocumentListResponse {
@@ -217,6 +218,14 @@ export interface KnowledgeDocumentListResponse {
 }
 
 export interface KnowledgeDocumentCreateRequest {
+  title: string;
+  content: string;
+  aceCategory: AceCategory;
+  accessScope: KnowledgeAccessScope;
+  allowedUsernames: string[];
+}
+
+export interface KnowledgeDocumentUpdateRequest {
   title: string;
   content: string;
   aceCategory: AceCategory;

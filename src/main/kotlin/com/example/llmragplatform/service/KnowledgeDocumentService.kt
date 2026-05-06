@@ -9,6 +9,7 @@ import com.example.llmragplatform.exception.ResourceNotFoundException
 import com.example.llmragplatform.generated.model.KnowledgeDocumentCreateRequest
 import com.example.llmragplatform.generated.model.KnowledgeDocumentListResponse
 import com.example.llmragplatform.generated.model.KnowledgeDocumentResponse
+import com.example.llmragplatform.generated.model.KnowledgeDocumentUpdateRequest
 import com.example.llmragplatform.generated.model.KnowledgeReindexResponse
 import com.example.llmragplatform.infrastructure.repository.KnowledgeDocumentChunkRepository
 import com.example.llmragplatform.infrastructure.repository.KnowledgeDocumentRepository
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.Instant
 
 @Service
 /**
@@ -87,7 +89,9 @@ class KnowledgeDocumentService(
                     ?: emptySet(),
                 // 未指定時は EXPECTATION を使い、ACE 軸で最低限の分類を持たせる。
                 aceCategory = request.aceCategory?.value?.let { AceCategory.valueOf(it) }
-                    ?: AceCategory.EXPECTATION
+                    ?: AceCategory.EXPECTATION,
+                // 作成時点の更新日時を保存する。
+                updatedAt = Instant.now()
             )
         )
         // 保存した文書本文を chunk 分割し、chunk エンティティ一覧へ変換する。
@@ -110,6 +114,53 @@ class KnowledgeDocumentService(
 
         // 保存した文書を API 応答モデルへ変換して返す。
         return toResponse(savedDocument)
+    }
+
+    @Transactional
+    /**
+     * 既存ナレッジ文書を全置換し、chunk と embedding も再生成する。
+     *
+     * @param documentId 更新対象の文書 ID。
+     * @param request 更新後の title、content、ACL、ACE 分類を含むリクエスト。
+     * @return 更新後の文書レスポンス。
+     */
+    fun updateDocument(documentId: Long, request: KnowledgeDocumentUpdateRequest): KnowledgeDocumentResponse {
+        // 対象文書を取得し、存在しなければ 404 とする。
+        val existingDocument = knowledgeDocumentRepository.findById(documentId)
+            .orElseThrow { ResourceNotFoundException("Knowledge document not found: $documentId") }
+        // 変更内容で文書本体を全置換し、更新日時だけ現在時刻へ進める。
+        val updatedDocument = knowledgeDocumentRepository.save(
+            KnowledgeDocument(
+                id = existingDocument.id,
+                title = request.title,
+                content = request.content,
+                accessScope = request.accessScope?.value?.let { KnowledgeDocumentAccessScope.valueOf(it) }
+                    ?: KnowledgeDocumentAccessScope.SHARED,
+                allowedUsernames = request.allowedUsernames?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.toSet()
+                    ?: emptySet(),
+                aceCategory = request.aceCategory?.value?.let { AceCategory.valueOf(it) }
+                    ?: AceCategory.EXPECTATION,
+                createdAt = existingDocument.createdAt,
+                updatedAt = Instant.now()
+            )
+        )
+        // 旧 chunk は差分更新せず、対象文書ぶんを全削除する。
+        knowledgeDocumentChunkRepository.deleteAllByKnowledgeDocument(existingDocument)
+        // 更新後本文を再 chunk 化し、新しい親文書へひも付け直す。
+        val chunks = knowledgeChunkingService.chunk(updatedDocument.content)
+            .mapIndexed { index, chunk ->
+                KnowledgeDocumentChunk(
+                    knowledgeDocument = updatedDocument,
+                    chunkIndex = index,
+                    content = chunk
+                )
+            }
+        // 再生成した chunk を保存し、必要なら embedding も同期で更新する。
+        val savedChunks = knowledgeDocumentChunkRepository.saveAll(chunks)
+        knowledgeEmbeddingService.enrichChunks(savedChunks)
+        return toResponse(updatedDocument)
     }
 
     /**
@@ -185,5 +236,7 @@ class KnowledgeDocumentService(
             .aceCategory(KnowledgeDocumentResponse.AceCategoryEnum.fromValue(document.aceCategory.name))
             // 作成日時を UTC の OffsetDateTime へ変換して設定する。
             .createdAt(OffsetDateTime.ofInstant(document.createdAt, ZoneOffset.UTC))
+            // 更新日時を UTC の OffsetDateTime へ変換して設定する。
+            .updatedAt(OffsetDateTime.ofInstant(document.updatedAt, ZoneOffset.UTC))
     }
 }

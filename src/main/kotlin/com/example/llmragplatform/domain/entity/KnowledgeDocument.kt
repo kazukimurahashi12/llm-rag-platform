@@ -39,4 +39,6 @@ class KnowledgeDocument(
     val aceCategory: AceCategory = AceCategory.EXPECTATION,
     @Column(nullable = false)
     val createdAt: Instant = Instant.now(),
+    @Column(nullable = false)
+    val updatedAt: Instant = Instant.now(),
 )

@@ -5,6 +5,7 @@ import com.example.llmragplatform.generated.api.KnowledgeApi
 import com.example.llmragplatform.generated.model.KnowledgeDocumentCreateRequest
 import com.example.llmragplatform.generated.model.KnowledgeDocumentListResponse
 import com.example.llmragplatform.generated.model.KnowledgeDocumentResponse
+import com.example.llmragplatform.generated.model.KnowledgeDocumentUpdateRequest
 import com.example.llmragplatform.generated.model.KnowledgeReindexJobAcceptedResponse
 import com.example.llmragplatform.generated.model.KnowledgeReindexJobListResponse
 import com.example.llmragplatform.generated.model.KnowledgeReindexJobStatusResponse
@@ -42,6 +43,17 @@ class KnowledgeDocumentController(
         ensureConfiguredAdmin()
         return ResponseEntity.status(201).body(
             knowledgeDocumentService.createDocument(knowledgeDocumentCreateRequest)
+        )
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    override fun updateKnowledgeDocument(
+        knowledgeDocumentId: Long,
+        knowledgeDocumentUpdateRequest: KnowledgeDocumentUpdateRequest,
+    ): ResponseEntity<KnowledgeDocumentResponse> {
+        ensureConfiguredAdmin()
+        return ResponseEntity.ok(
+            knowledgeDocumentService.updateDocument(knowledgeDocumentId, knowledgeDocumentUpdateRequest)
         )
     }
 
