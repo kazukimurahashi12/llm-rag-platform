@@ -66,6 +66,7 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/v1/knowledge-documents/reindex-jobs/*").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/v1/knowledge-documents/reindex-jobs").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/v1/knowledge-documents").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/v1/knowledge-documents/*").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/v1/knowledge-documents").hasAnyRole("ADMIN", "OPERATOR")
                     .requestMatchers("/v1/audit-logs/**").hasAnyRole("ADMIN", "OPERATOR")
                     .requestMatchers(HttpMethod.GET, "/v1/dashboard/summary").hasAnyRole("ADMIN", "OPERATOR")

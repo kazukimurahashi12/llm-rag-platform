@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.Instant
@@ -120,6 +121,7 @@ class KnowledgeDocumentControllerIntegrationTest {
             .andExpect(jsonPath("$.aceCategory").value("ABILITY"))
             .andExpect(jsonPath("$.accessScope").value("ADMIN_ONLY"))
             .andExpect(jsonPath("$.allowedUsernames[0]").value("test-operator"))
+            .andExpect(jsonPath("$.updatedAt").exists())
 
         val savedDocuments = knowledgeDocumentRepository.findAll()
         val savedChunks = knowledgeDocumentChunkRepository.findAll()
@@ -136,6 +138,68 @@ class KnowledgeDocumentControllerIntegrationTest {
                 .content("""{"title":"x","content":"y","aceCategory":"EXPECTATION"}""")
         )
             .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `update knowledge document replaces content and rebuilds chunks for admin`() {
+        val targetDocument = knowledgeDocumentRepository.findAll()
+            .first { it.title == "週報運用ガイド" }
+
+        mockMvc.perform(
+            put("/v1/knowledge-documents/${targetDocument.id}")
+                .with(httpBasic("test-admin", "test-admin-password"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "title": "週報・1on1運用ガイド",
+                      "content": "週報の背景を確認し、1on1で次回の行動を合意する。",
+                      "aceCategory": "EXPECTATION",
+                      "accessScope": "SHARED",
+                      "allowedUsernames": []
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(targetDocument.id))
+            .andExpect(jsonPath("$.title").value("週報・1on1運用ガイド"))
+            .andExpect(jsonPath("$.content").value("週報の背景を確認し、1on1で次回の行動を合意する。"))
+            .andExpect(jsonPath("$.aceCategory").value("EXPECTATION"))
+            .andExpect(jsonPath("$.accessScope").value("SHARED"))
+            .andExpect(jsonPath("$.updatedAt").exists())
+
+        val updatedDocument = knowledgeDocumentRepository.findById(targetDocument.id).orElseThrow()
+        val rebuiltChunks = knowledgeDocumentChunkRepository.findAllByKnowledgeDocumentOrderByChunkIndexAsc(updatedDocument)
+        assertEquals("週報・1on1運用ガイド", updatedDocument.title)
+        assertEquals(com.example.llmragplatform.domain.entity.AceCategory.EXPECTATION, updatedDocument.aceCategory)
+        assertEquals(1, rebuiltChunks.size)
+        assertEquals("週報の背景を確認し、1on1で次回の行動を合意する。", rebuiltChunks.first().content)
+    }
+
+    @Test
+    fun `update knowledge document returns 403 for operator`() {
+        val targetDocumentId = knowledgeDocumentRepository.findAll().first().id
+
+        mockMvc.perform(
+            put("/v1/knowledge-documents/$targetDocumentId")
+                .with(httpBasic("test-operator", "test-operator-password"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"title":"x","content":"y","aceCategory":"EXPECTATION"}""")
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `update knowledge document returns 404 when not found`() {
+        mockMvc.perform(
+            put("/v1/knowledge-documents/99999")
+                .with(httpBasic("test-admin", "test-admin-password"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"title":"x","content":"y","aceCategory":"EXPECTATION"}""")
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.message").value("Knowledge document not found: 99999"))
     }
 
     @Test
@@ -240,6 +304,7 @@ class KnowledgeDocumentControllerIntegrationTest {
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].title").value("週報運用ガイド"))
             .andExpect(jsonPath("$.items[0].aceCategory").value("ABILITY"))
+            .andExpect(jsonPath("$.items[0].updatedAt").exists())
     }
 
     @Test
@@ -256,6 +321,7 @@ class KnowledgeDocumentControllerIntegrationTest {
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].title").value("週報運用ガイド"))
             .andExpect(jsonPath("$.items[0].aceCategory").value("ABILITY"))
+            .andExpect(jsonPath("$.items[0].updatedAt").exists())
     }
 
     @Test

@@ -403,6 +403,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/knowledge-documents/{knowledgeDocumentId}:
+    put:
+      operationId: updateKnowledgeDocument
+      summary: ナレッジ文書を更新する
+      description: |-
+        既存のナレッジ文書全体を置き換える。
+        更新後は chunk を再生成し、vector 検索用 embedding も再作成する。
+      tags:
+        - Knowledge
+      parameters:
+        - name: knowledgeDocumentId
+          in: path
+          required: true
+          description: ナレッジ文書 ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeDocumentUpdateRequest'
+      responses:
+        '200':
+          description: 文書更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeDocumentResponse'
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ナレッジ文書が存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/knowledge-documents/reindex:
     post:
       operationId: reindexKnowledgeDocuments
@@ -1358,6 +1400,34 @@ components:
           items:
             type: string
 
+    KnowledgeDocumentUpdateRequest:
+      type: object
+      required:
+        - title
+        - content
+        - aceCategory
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        aceCategory:
+          type: string
+          enum:
+            - ABILITY
+            - CULTURE
+            - EXPECTATION
+        accessScope:
+          type: string
+          enum:
+            - SHARED
+            - ADMIN_ONLY
+          default: SHARED
+        allowedUsernames:
+          type: array
+          items:
+            type: string
+
     KnowledgeDocumentResponse:
       type: object
       required:
@@ -1368,6 +1438,7 @@ components:
         - allowedUsernames
         - aceCategory
         - createdAt
+        - updatedAt
       properties:
         id:
           type: integer
@@ -1392,6 +1463,9 @@ components:
             - CULTURE
             - EXPECTATION
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
 

@@ -13,7 +13,7 @@ class WebCorsConfig {
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration().apply {
             allowedOrigins = listOf("http://localhost:5173")
-            allowedMethods = listOf("GET", "POST", "DELETE", "OPTIONS")
+            allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
             allowedHeaders = listOf("*")
             allowCredentials = true
         }

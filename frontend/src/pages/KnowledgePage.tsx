@@ -1,4 +1,5 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {
   Alert,
@@ -16,7 +17,7 @@ import {
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { createKnowledgeDocument, fetchKnowledgeDocuments, reindexAllDocuments, reindexDocument } from "../api/knowledge";
+import { createKnowledgeDocument, fetchKnowledgeDocuments, reindexAllDocuments, reindexDocument, updateKnowledgeDocument } from "../api/knowledge";
 import { getApiErrorMessage } from "../api/client";
 import { PageScaffold } from "../components/layout/PageScaffold";
 import { EmptyState, ErrorState, LoadingState } from "../components/shared/FeedbackState";
@@ -30,6 +31,7 @@ export function KnowledgePage() {
   const [content, setContent] = useState("");
   const [aceCategory, setAceCategory] = useState<"ABILITY" | "CULTURE" | "EXPECTATION">("EXPECTATION");
   const [accessScope, setAccessScope] = useState<"SHARED" | "ADMIN_ONLY">("SHARED");
+  const [editingDocumentId, setEditingDocumentId] = useState<number | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["knowledge-documents"],
@@ -46,6 +48,19 @@ export function KnowledgePage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      if (editingDocumentId == null) {
+        throw new Error("更新対象の文書 ID がありません");
+      }
+      return updateKnowledgeDocument(editingDocumentId, { title, content, aceCategory, accessScope, allowedUsernames: [] });
+    },
+    onSuccess: async () => {
+      resetForm();
+      await queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] });
+    },
+  });
+
   const fullReindexMutation = useMutation({
     mutationFn: reindexAllDocuments,
   });
@@ -54,6 +69,16 @@ export function KnowledgePage() {
     mutationFn: (knowledgeDocumentId: number) => reindexDocument(knowledgeDocumentId),
   });
 
+  const isEditing = editingDocumentId != null;
+
+  function resetForm() {
+    setEditingDocumentId(null);
+    setTitle("");
+    setContent("");
+    setAceCategory("EXPECTATION");
+    setAccessScope("SHARED");
+  }
+
   return (
     <PageScaffold
       title="ナレッジ"
@@ -61,15 +86,29 @@ export function KnowledgePage() {
     >
       <SectionCard
         title="文書を登録"
-        description="管理者トークンで保護されています。ナレッジベースに文書を追加して検索対象にします。"
+        description="管理者トークンで保護されています。ナレッジベースへの追加と更新をここで行います。"
         action={
-          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-            文書を追加
-          </Button>
+          <Stack direction="row" spacing={1}>
+            {isEditing ? (
+              <Button variant="outlined" onClick={resetForm} disabled={updateMutation.isPending}>
+                編集をやめる
+              </Button>
+            ) : null}
+            <Button
+              variant="contained"
+              startIcon={isEditing ? <EditRoundedIcon /> : <AddRoundedIcon />}
+              onClick={() => (isEditing ? updateMutation.mutate() : createMutation.mutate())}
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {isEditing ? "文書を更新" : "文書を追加"}
+            </Button>
+          </Stack>
         }
       >
         {createMutation.isError ? <ErrorState message={getApiErrorMessage(createMutation.error)} /> : null}
         {createMutation.isSuccess ? <Alert severity="success">文書を登録しました。</Alert> : null}
+        {updateMutation.isError ? <ErrorState message={getApiErrorMessage(updateMutation.error)} /> : null}
+        {updateMutation.isSuccess ? <Alert severity="success">文書を更新しました。chunk と embedding も再生成済みです。</Alert> : null}
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField fullWidth label="タイトル" value={title} onChange={(event) => setTitle(event.target.value)} />
@@ -102,7 +141,7 @@ export function KnowledgePage() {
 
       <SectionCard
         title="文書一覧"
-        description="現在の RAG 入力文書を確認し、埋め込み再生成ジョブを実行します。"
+        description="現在の RAG 入力文書を確認し、再インデックスや編集の起点にします。"
         action={
           <Button
             variant="outlined"
@@ -130,6 +169,7 @@ export function KnowledgePage() {
                 <TableCell>ACE分類</TableCell>
                 <TableCell>公開範囲</TableCell>
                 <TableCell>作成日時</TableCell>
+                <TableCell>更新日時</TableCell>
                 <TableCell>許可ユーザー</TableCell>
                 <TableCell align="right">操作</TableCell>
               </TableRow>
@@ -153,11 +193,26 @@ export function KnowledgePage() {
                     <StatusBadge status={item.accessScope} />
                   </TableCell>
                   <TableCell>{formatDateTime(item.createdAt)}</TableCell>
+                  <TableCell>{formatDateTime(item.updatedAt)}</TableCell>
                   <TableCell>{item.allowedUsernames.join(", ") || "-"}</TableCell>
                   <TableCell align="right">
-                    <Button size="small" onClick={() => singleReindexMutation.mutate(item.id)}>
-                      再インデックス
-                    </Button>
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setEditingDocumentId(item.id);
+                          setTitle(item.title);
+                          setContent(item.content);
+                          setAceCategory(item.aceCategory);
+                          setAccessScope(item.accessScope);
+                        }}
+                      >
+                        編集
+                      </Button>
+                      <Button size="small" onClick={() => singleReindexMutation.mutate(item.id)}>
+                        再インデックス
+                      </Button>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}
