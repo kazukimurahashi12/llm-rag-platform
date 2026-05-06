@@ -34,6 +34,7 @@ rag:
   min-similarity-score: ${RAG_MIN_SIMILARITY_SCORE:0.4}
   rerank-enabled: ${RAG_RERANK_ENABLED:false}
   rerank-candidate-multiplier: ${RAG_RERANK_CANDIDATE_MULTIPLIER:3}
+  groundedness-threshold: ${RAG_GROUNDEDNESS_THRESHOLD:0.7}
 
 app:
   reindex-jobs:

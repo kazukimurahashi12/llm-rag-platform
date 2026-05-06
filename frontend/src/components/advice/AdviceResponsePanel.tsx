@@ -49,6 +49,15 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
       </Stack>
 
       <Stack spacing={1.25}>
+        <Typography variant="subtitle1">Groundedness</Typography>
+        <Stack direction="row" flexWrap="wrap" gap={1}>
+          <UsagePill label="判定" value={data.groundednessEvaluation.status} />
+          <UsagePill label="スコア" value={formatNumber(data.groundednessEvaluation.groundednessScore, 2)} />
+        </Stack>
+        <Typography color="text.secondary">{data.groundednessEvaluation.reason}</Typography>
+      </Stack>
+
+      <Stack spacing={1.25}>
         <Typography variant="subtitle1">使用量</Typography>
         <Stack direction="row" flexWrap="wrap" gap={1}>
           <UsagePill label="モデル" value={data.usage.model} />

@@ -807,6 +807,7 @@ components:
       required:
         - advice
         - aceAnalysis
+        - groundednessEvaluation
         - usage
         - retrievedDocuments
       properties:
@@ -815,6 +816,8 @@ components:
           description: 生成されたアドバイス
         aceAnalysis:
           $ref: '#/components/schemas/AceAnalysis'
+        groundednessEvaluation:
+          $ref: '#/components/schemas/GroundednessEvaluation'
         usage:
           $ref: '#/components/schemas/UsageInfo'
         retrievedDocuments:
@@ -836,6 +839,26 @@ components:
             - EXPECTATION
         reason:
           type: string
+
+    GroundednessEvaluation:
+      type: object
+      required:
+        - groundednessScore
+        - reason
+        - status
+      properties:
+        groundednessScore:
+          type: number
+          format: double
+          description: 取得根拠にどれだけ沿っているかを 0.0 から 1.0 で表した近似スコア
+        reason:
+          type: string
+          description: groundedness 判定の簡単な理由
+        status:
+          type: string
+          enum:
+            - GROUNDED
+            - LOW_GROUNDEDNESS
 
     UsageInfo:
       type: object

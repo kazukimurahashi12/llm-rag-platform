@@ -4,6 +4,7 @@ import com.example.llmragplatform.domain.LlmClient
 import com.example.llmragplatform.generated.model.AceAnalysis
 import com.example.llmragplatform.generated.model.AdviceRequest
 import com.example.llmragplatform.generated.model.AdviceResponse
+import com.example.llmragplatform.generated.model.GroundednessEvaluation
 import com.example.llmragplatform.generated.model.RetrievedDocument
 import com.example.llmragplatform.generated.model.UsageInfo
 import org.springframework.beans.factory.annotation.Value
@@ -18,6 +19,7 @@ class AdviceServiceImpl(
     private val promptManager: PromptManager,
     private val knowledgeRetrievalService: KnowledgeRetrievalService,
     private val aceAnalysisService: AceAnalysisService,
+    private val groundednessEvaluationService: GroundednessEvaluationService,
     private val promptInjectionGuardService: PromptInjectionGuardService,
     private val costCalculator: CostCalculator,
     private val piiMaskingService: PiiMaskingService,
@@ -83,6 +85,13 @@ class AdviceServiceImpl(
 
         // LLM を呼び出して助言文を生成する。
         val llmResponse = llmClient.chat(model, systemPrompt, userMessage)
+        // 生成後に、回答が取得根拠へ沿っているかを追加評価する。
+        val groundednessEvaluation = groundednessEvaluationService.evaluate(
+            situation = memberContext.situation,
+            targetGoal = memberContext.targetGoal,
+            advice = llmResponse.content,
+            retrievedKnowledge = retrievedKnowledge
+        )
 
         // 現在時刻との差分から処理時間を算出する。
         val latencyMs = System.currentTimeMillis() - startTime
@@ -131,6 +140,15 @@ class AdviceServiceImpl(
                 AceAnalysis()
                     .primaryCategory(AceAnalysis.PrimaryCategoryEnum.fromValue(aceAnalysis.primaryCategory.name))
                     .reason(aceAnalysis.reason)
+            )
+            // 回答がどれだけ根拠文書に沿っているかの評価結果を設定する。
+            .groundednessEvaluation(
+                GroundednessEvaluation()
+                    .groundednessScore(groundednessEvaluation.score)
+                    .reason(groundednessEvaluation.reason)
+                    .status(
+                        GroundednessEvaluation.StatusEnum.fromValue(groundednessEvaluation.status.name)
+                    )
             )
             // 検索で取得した根拠文書一覧を設定する。
             .retrievedDocuments(

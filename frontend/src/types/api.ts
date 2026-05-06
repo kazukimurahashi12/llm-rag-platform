@@ -159,9 +159,16 @@ export interface AceAnalysis {
   reason: string;
 }
 
+export interface GroundednessEvaluation {
+  groundednessScore: number;
+  reason: string;
+  status: "GROUNDED" | "LOW_GROUNDEDNESS";
+}
+
 export interface AdviceResponse {
   advice: string;
   aceAnalysis: AceAnalysis;
+  groundednessEvaluation: GroundednessEvaluation;
   usage: UsageInfo;
   retrievedDocuments: RetrievedDocument[];
 }
