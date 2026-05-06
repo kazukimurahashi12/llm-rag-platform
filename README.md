@@ -674,8 +674,3 @@ CLI で確認する場合:
 curl http://localhost:9090/api/v1/targets
 curl http://localhost:3000/api/health
 ```
-
-
-## 補足
-
-このリポジトリは、単なる LLM デモではなく、`AI を安全に、かつ事業運用可能な形で組み込む` ことを主眼にしたポートフォリオとして設計しています。
