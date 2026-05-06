@@ -1,5 +1,6 @@
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import GppMaybeRoundedIcon from "@mui/icons-material/GppMaybeRounded";
+import FactCheckRoundedIcon from "@mui/icons-material/FactCheckRounded";
 import PolicyRoundedIcon from "@mui/icons-material/PolicyRounded";
 import ChecklistRoundedIcon from "@mui/icons-material/ChecklistRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
@@ -20,6 +21,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   compareRetrievalEvaluations,
+  fetchDefaultGroundednessEvaluation,
   fetchDefaultPromptInjectionEvaluation,
   fetchDefaultRetrievalEvaluation,
 } from "../api/evaluation";
@@ -71,11 +73,15 @@ export function EvaluationPage() {
   });
 
   const evaluation = defaultEvaluationQuery.data;
+  const groundednessMutation = useMutation({
+    mutationFn: fetchDefaultGroundednessEvaluation,
+  });
   const promptInjectionQuery = useQuery({
     queryKey: ["prompt-injection-evaluation-default"],
     queryFn: fetchDefaultPromptInjectionEvaluation,
   });
   const promptInjectionEvaluation = promptInjectionQuery.data;
+  const groundednessEvaluation = groundednessMutation.data;
 
   return (
     <PageScaffold
@@ -151,6 +157,134 @@ export function EvaluationPage() {
             </Table>
           </Stack>
         ) : null}
+      </SectionCard>
+
+      <SectionCard
+        title="Groundedness 評価"
+        description="src/main/resources/evaluation/groundedness-cases.json を使って、judge と fallback 方針の妥当性を確認します。"
+        action={
+          <Button
+            variant="contained"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={() => groundednessMutation.mutate()}
+            disabled={groundednessMutation.isPending}
+          >
+            評価実行
+          </Button>
+        }
+      >
+        {groundednessMutation.isPending ? <LoadingState label="Groundedness 評価を実行中..." /> : null}
+        {groundednessMutation.isError ? <ErrorState message={getApiErrorMessage(groundednessMutation.error)} /> : null}
+        {groundednessEvaluation ? (
+          <Stack spacing={2.5}>
+            <Grid container spacing={2.5}>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <MetricCard
+                  label="Accuracy"
+                  value={formatPercent(groundednessEvaluation.accuracy)}
+                  helper={`全 ${groundednessEvaluation.totalCases} ケースの一致率`}
+                  icon={<FactCheckRoundedIcon color="primary" />}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <MetricCard
+                  label="平均 groundedness"
+                  value={formatPercent(groundednessEvaluation.averageGroundednessScore)}
+                  helper="judge が返した score の平均"
+                  icon={<InsightsRoundedIcon color="primary" />}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <MetricCard
+                  label="LOW 件数"
+                  value={formatNumber(groundednessEvaluation.lowGroundednessCases)}
+                  helper="純粋に LOW_GROUNDEDNESS になったケース数"
+                  icon={<GppMaybeRoundedIcon color="primary" />}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <MetricCard
+                  label="NO_EVIDENCE"
+                  value={formatNumber(groundednessEvaluation.noEvidenceCases)}
+                  helper="根拠文書が不足していたケース数"
+                  icon={<PolicyRoundedIcon color="primary" />}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={2.5}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <MetricCard
+                  label="PARSE_FAILED"
+                  value={formatNumber(groundednessEvaluation.parseFailedCases)}
+                  helper="judge 応答の JSON 解析に失敗した件数"
+                  icon={<PolicyRoundedIcon color="primary" />}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <MetricCard
+                  label="JUDGE_ERROR"
+                  value={formatNumber(groundednessEvaluation.judgeErrorCases)}
+                  helper="judge API 呼び出し自体に失敗した件数"
+                  icon={<PolicyRoundedIcon color="primary" />}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <MetricCard
+                  label="Fallback 件数"
+                  value={formatNumber(groundednessEvaluation.fallbackAppliedCases)}
+                  helper="実際に保守的 fallback 応答へ切り替わったケース数"
+                  icon={<PolicyRoundedIcon color="primary" />}
+                />
+              </Grid>
+            </Grid>
+
+            <Alert severity="info">
+              {groundednessEvaluation.totalCases} ケース中 {groundednessEvaluation.matchedCases} ケースが期待どおり。
+              GROUNDED {groundednessEvaluation.groundedCases} 件 / LOW {groundednessEvaluation.lowGroundednessCases} 件 / NO_EVIDENCE {groundednessEvaluation.noEvidenceCases} 件。
+            </Alert>
+
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Case</TableCell>
+                  <TableCell>Expected</TableCell>
+                  <TableCell>Actual</TableCell>
+                  <TableCell>Fallback</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Score</TableCell>
+                  <TableCell>Reason</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {groundednessEvaluation.caseResults.map((item) => (
+                  <TableRow key={item.label ?? `${item.situation}-${item.targetGoal}`} hover>
+                    <TableCell>
+                      <Stack spacing={0.5}>
+                        <Typography fontWeight={700}>{item.label ?? "unlabeled"}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.situation}
+                        </Typography>
+                      </Stack>
+                    </TableCell>
+                    <TableCell>{item.expectedStatus}</TableCell>
+                    <TableCell>{item.actualStatus}</TableCell>
+                    <TableCell>{item.fallbackApplied ? "APPLIED" : "NONE"}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={item.matched ? "OK" : "MISMATCH"} />
+                    </TableCell>
+                    <TableCell>{formatPercent(item.groundednessScore)}</TableCell>
+                    <TableCell>{item.reason}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Stack>
+        ) : (
+          <Typography color="text.secondary">
+            評価実行を押すと、標準 groundedness ケースを使って judge と fallback 方針を評価します。
+          </Typography>
+        )}
       </SectionCard>
 
       <SectionCard

@@ -33,6 +33,10 @@ class DashboardQueryService(
         val totalAdviceRequests = auditLogRepository.count()
         val averageLatencyMs = auditLogRepository.findAverageLatencyMs() ?: 0.0
         val averageCostJpy = auditLogRepository.findAverageCostJpy() ?: 0.0
+        val averageGroundednessScore = auditLogRepository.findAverageGroundednessScore() ?: 0.0
+        val groundedResponses = auditLogRepository.countByGroundednessStatus("GROUNDED")
+        val lowGroundednessResponses = auditLogRepository.countByGroundednessStatus("LOW_GROUNDEDNESS")
+        val groundednessFallbackResponses = auditLogRepository.countByGroundednessFallbackAppliedTrue()
         // reindex job を状態別に集計する。
         val queuedReindexJobs = knowledgeReindexJobRepository.countByStatus(KnowledgeReindexJobStatus.QUEUED)
         val runningReindexJobs = knowledgeReindexJobRepository.countByStatus(KnowledgeReindexJobStatus.RUNNING)
@@ -61,6 +65,10 @@ class DashboardQueryService(
             .totalAdviceRequests(totalAdviceRequests)
             .averageLatencyMs(averageLatencyMs)
             .averageCostJpy(averageCostJpy)
+            .averageGroundednessScore(averageGroundednessScore)
+            .groundedResponses(groundedResponses)
+            .lowGroundednessResponses(lowGroundednessResponses)
+            .groundednessFallbackResponses(groundednessFallbackResponses)
             .reindexSuccessRate(reindexSuccessRate)
             .completedReindexJobs(completedReindexJobs)
             .failedReindexJobs(failedReindexJobs)

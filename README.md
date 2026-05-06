@@ -67,6 +67,10 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - ナレッジ文書登録時の chunking / embedding 生成を実装
 - ナレッジ文書へ `aceCategory` を付与し、ACE 分析結果を advice response へ返却
 - query を ACE 分類し、同カテゴリ文書を retrieval で軽く優先する boost を実装
+- advice 生成後に groundedness を自動評価し、score / status / reason を返却
+- groundedness が低い場合は、断定的な回答を返さず保守的な fallback 応答へ切り替える
+- groundedness を audit log と dashboard に保存・集計する
+- retrieval / prompt injection / groundedness の標準評価ケースを持ち、評価 API で回帰確認できる
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
 - Micrometer / Prometheus 向けに再インデックスジョブのメトリクスを公開
 - 今後の実装予定として、冪等キー（Idempotency-Key）とサーキットブレイカーの導入を検討（拡張予定）
@@ -114,11 +118,29 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - `advice`
 - `aceAnalysis.primaryCategory`
 - `aceAnalysis.reason`
+- `groundednessEvaluation.groundednessScore`
+- `groundednessEvaluation.status`
+- `groundednessEvaluation.reason`
+- `groundednessEvaluation.fallbackApplied`
 - `usage.model`
 - `usage.promptTokens`
 - `usage.completionTokens`
 - `usage.totalTokens`
 - `usage.estimatedCostJpy`
+
+`groundednessEvaluation.status=LOW_GROUNDEDNESS` かつ `fallbackApplied=true` の場合は、根拠不足と判断して保守的な定型応答へ切り替えます。
+
+## groundedness fallback 方針
+
+- advice 生成後に、取得根拠と回答を使って LLM-as-a-judge で groundedness を採点します
+- `rag.groundedness-threshold` 未満なら `LOW_GROUNDEDNESS` と判定します
+- `rag.groundedness-fallback-enabled=true` の場合、低信頼の回答本文はそのまま返さず、ナレッジ見直しや再インデックスを促す保守的な fallback 応答へ置き換えます
+- groundedness の `score / status / reason / fallbackApplied` は response と `audit_logs` に残し、dashboard では平均値と fallback 件数を集計します
+
+主な設定値:
+
+- `RAG_GROUNDEDNESS_THRESHOLD`
+- `RAG_GROUNDEDNESS_FALLBACK_ENABLED`
 
 ### RAG / ナレッジ管理 API
 
@@ -131,6 +153,15 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - `GET /v1/knowledge-documents/reindex-jobs/{jobId}`
 - `DELETE /v1/knowledge-documents/reindex-jobs/{jobId}`
 - `POST /v1/knowledge-documents/reindex-jobs/{jobId}/retry`
+
+### 評価 API
+
+- `GET /v1/retrieval-evaluations/default`
+- `POST /v1/retrieval-evaluations/comparisons`
+- `GET /v1/prompt-injection-evaluations/default`
+- `GET /v1/groundedness-evaluations/default`
+
+`src/main/resources/evaluation/groundedness-cases.json` では、取得根拠に沿った回答と、根拠不足で fallback すべき回答を混在させて評価できます。
 
 Knowledge 文書は `aceCategory` を持ちます。
 

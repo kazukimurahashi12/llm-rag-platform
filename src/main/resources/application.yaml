@@ -35,6 +35,8 @@ rag:
   rerank-enabled: ${RAG_RERANK_ENABLED:false}
   rerank-candidate-multiplier: ${RAG_RERANK_CANDIDATE_MULTIPLIER:3}
   groundedness-threshold: ${RAG_GROUNDEDNESS_THRESHOLD:0.7}
+  groundedness-fallback-enabled: ${RAG_GROUNDEDNESS_FALLBACK_ENABLED:true}
+  groundedness-fallback-score-threshold: ${RAG_GROUNDEDNESS_FALLBACK_SCORE_THRESHOLD:0.3}
 
 app:
   reindex-jobs:

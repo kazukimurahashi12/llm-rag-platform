@@ -3,10 +3,13 @@ package com.example.llmragplatform.controller
 import com.example.llmragplatform.generated.api.EvaluationApi
 import com.example.llmragplatform.generated.model.PromptInjectionEvaluationRequest
 import com.example.llmragplatform.generated.model.PromptInjectionEvaluationResponse
+import com.example.llmragplatform.generated.model.GroundednessCaseEvaluationRequest
+import com.example.llmragplatform.generated.model.GroundednessCaseEvaluationResponse
 import com.example.llmragplatform.generated.model.RetrievalEvaluationComparisonRequest
 import com.example.llmragplatform.generated.model.RetrievalEvaluationComparisonResponse
 import com.example.llmragplatform.generated.model.RetrievalEvaluationRequest
 import com.example.llmragplatform.generated.model.RetrievalEvaluationResponse
+import com.example.llmragplatform.service.GroundednessCaseEvaluationService
 import com.example.llmragplatform.service.PromptInjectionEvaluationService
 import com.example.llmragplatform.service.RetrievalEvaluationService
 import org.springframework.http.ResponseEntity
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController
 class RetrievalEvaluationController(
     private val retrievalEvaluationService: RetrievalEvaluationService,
     private val promptInjectionEvaluationService: PromptInjectionEvaluationService,
+    private val groundednessCaseEvaluationService: GroundednessCaseEvaluationService,
 ) : EvaluationApi {
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -57,6 +61,22 @@ class RetrievalEvaluationController(
     override fun evaluateDefaultPromptInjectionCases(): ResponseEntity<PromptInjectionEvaluationResponse> {
         return ResponseEntity.ok(
             promptInjectionEvaluationService.evaluateDefaultCases()
+        )
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    override fun evaluateGroundedness(
+        groundednessCaseEvaluationRequest: GroundednessCaseEvaluationRequest,
+    ): ResponseEntity<GroundednessCaseEvaluationResponse> {
+        return ResponseEntity.ok(
+            groundednessCaseEvaluationService.evaluate(groundednessCaseEvaluationRequest)
+        )
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    override fun evaluateDefaultGroundednessCases(): ResponseEntity<GroundednessCaseEvaluationResponse> {
+        return ResponseEntity.ok(
+            groundednessCaseEvaluationService.evaluateDefaultCases()
         )
     }
 }

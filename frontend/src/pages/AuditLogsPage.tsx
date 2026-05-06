@@ -68,6 +68,7 @@ export function AuditLogsPage() {
               <TableRow>
                 <TableCell>ID</TableCell>
                 <TableCell>モデル</TableCell>
+                <TableCell>Groundedness</TableCell>
                 <TableCell>合計トークン</TableCell>
                 <TableCell>コスト</TableCell>
                 <TableCell>レイテンシ</TableCell>
@@ -80,6 +81,11 @@ export function AuditLogsPage() {
                 <TableRow key={item.id} hover>
                   <TableCell>{item.id}</TableCell>
                   <TableCell>{item.model}</TableCell>
+                  <TableCell>
+                    {`${formatNumber(item.groundednessEvaluation.groundednessScore * 100, 1)}% (${item.groundednessEvaluation.status})${
+                      item.groundednessEvaluation.fallbackApplied ? " / FALLBACK" : ""
+                    }`}
+                  </TableCell>
                   <TableCell>{formatNumber(item.totalTokens)}</TableCell>
                   <TableCell>{formatCurrencyJpy(item.costJpy)}</TableCell>
                   <TableCell>{formatNumber(item.latencyMs)} ms</TableCell>
@@ -106,6 +112,14 @@ export function AuditLogsPage() {
               <Typography variant="subtitle2" color="text.secondary">
                 {detailQuery.data.model} · {formatDateTime(detailQuery.data.createdAt)}
               </Typography>
+              <Typography color="text.secondary">
+                Groundedness {formatNumber(detailQuery.data.groundednessEvaluation.groundednessScore * 100, 1)}% ·
+                {` ${detailQuery.data.groundednessEvaluation.status}`}
+              </Typography>
+              <Typography color="text.secondary">
+                Fallback {detailQuery.data.groundednessEvaluation.fallbackApplied ? "APPLIED" : "NONE"}
+              </Typography>
+              <Typography color="text.secondary">{detailQuery.data.groundednessEvaluation.reason}</Typography>
               <Typography variant="h6">入力内容</Typography>
               <Typography sx={{ whiteSpace: "pre-wrap" }}>{detailQuery.data.prompt}</Typography>
               <Typography variant="h6">出力内容</Typography>

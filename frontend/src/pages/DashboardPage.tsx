@@ -57,6 +57,21 @@ export function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
           <MetricCard
+            label="平均 groundedness"
+            value={summary ? `${formatNumber(summary.averageGroundednessScore * 100, 1)}%` : "-"}
+            helper={
+              summary
+                ? `低信頼 ${formatNumber(summary.lowGroundednessResponses)} 件 / fallback ${formatNumber(summary.groundednessFallbackResponses)} 件`
+                : "根拠追従度の平均"
+            }
+            icon={<InsightsRoundedIcon color="primary" />}
+          />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2.5}>
+        <Grid size={{ xs: 12, md: 3 }}>
+          <MetricCard
             label="再インデックス成功率"
             value={summary ? `${formatNumber(summary.reindexSuccessRate * 100, 1)}%` : "-"}
             helper={
@@ -187,6 +202,8 @@ export function DashboardPage() {
       >
         <Stack spacing={1}>
           <Typography color="text.secondary">総リクエスト数、平均レイテンシ、平均コストは `audit_logs` から集計しています。</Typography>
+          <Typography color="text.secondary">groundedness は advice 生成後の judge 結果を `audit_logs` へ保存し、その平均値と件数を集計しています。</Typography>
+          <Typography color="text.secondary">fallback 件数は `NO_EVIDENCE` または極端に低い `LOW_GROUNDEDNESS` により保守的な定型応答へ切り替わった回数です。</Typography>
           <Typography color="text.secondary">再インデックス成功率は `knowledge_reindex_jobs` の `COMPLETED` と `FAILED` から算出しています。</Typography>
           <Typography color="text.secondary">ナレッジ文書と chunk 数は RAG の検索対象データ量を示します。</Typography>
           <Typography color="text.secondary">Vector 採用と threshold fallback はアプリ起動後の Micrometer counter から取得しています。</Typography>

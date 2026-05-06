@@ -5,6 +5,7 @@ import com.example.llmragplatform.exception.ResourceNotFoundException
 import com.example.llmragplatform.generated.model.AuditLogDetailResponse
 import com.example.llmragplatform.generated.model.AuditLogListResponse
 import com.example.llmragplatform.generated.model.AuditLogSummaryItem
+import com.example.llmragplatform.generated.model.GroundednessEvaluation
 import com.example.llmragplatform.infrastructure.repository.AuditLogRepository
 import jakarta.persistence.criteria.Predicate
 import org.springframework.data.domain.Sort
@@ -69,6 +70,7 @@ class AuditLogQueryService(
             .model(log.model)
             .prompt(toVisiblePrompt(log, includeSensitiveContent))
             .response(toVisibleResponse(log, includeSensitiveContent))
+            .groundednessEvaluation(toGroundednessEvaluation(log))
             .promptTokens(log.promptTokens)
             .completionTokens(log.completionTokens)
             .totalTokens(log.totalTokens)
@@ -87,12 +89,27 @@ class AuditLogQueryService(
         return AuditLogSummaryItem()
             .id(log.id)
             .model(log.model)
+            .groundednessEvaluation(toGroundednessEvaluation(log))
             .promptTokens(log.promptTokens)
             .completionTokens(log.completionTokens)
             .totalTokens(log.totalTokens)
             .costJpy(log.costJpy)
             .latencyMs(log.latencyMs)
             .createdAt(OffsetDateTime.ofInstant(log.createdAt, ZoneOffset.UTC))
+    }
+
+    /**
+     * 監査ログへ保存した groundedness 情報を API モデルへ変換する。
+     *
+     * @param log 変換元の監査ログ。
+     * @return groundedness 評価レスポンス。
+     */
+    private fun toGroundednessEvaluation(log: AuditLog): GroundednessEvaluation {
+        return GroundednessEvaluation()
+            .groundednessScore(log.groundednessScore)
+            .reason(log.groundednessReason)
+            .fallbackApplied(log.groundednessFallbackApplied)
+            .status(GroundednessEvaluation.StatusEnum.fromValue(log.groundednessStatus))
     }
 
     /**

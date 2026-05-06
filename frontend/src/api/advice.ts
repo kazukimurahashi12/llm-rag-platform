@@ -11,7 +11,8 @@ const adviceSchema = z.object({
   groundednessEvaluation: z.object({
     groundednessScore: z.number(),
     reason: z.string(),
-    status: z.enum(["GROUNDED", "LOW_GROUNDEDNESS"]),
+    status: z.enum(["GROUNDED", "LOW_GROUNDEDNESS", "NO_EVIDENCE", "PARSE_FAILED", "JUDGE_ERROR"]),
+    fallbackApplied: z.boolean(),
   }),
   usage: z.object({
     model: z.string(),

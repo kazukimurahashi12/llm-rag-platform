@@ -344,6 +344,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/groundedness-evaluations:
+    post:
+      operationId: evaluateGroundedness
+      summary: groundedness 評価を実行する
+      description: |-
+        取得根拠、生成回答、期待判定を持つ評価ケースを受け取り、
+        groundedness judge と fallback 方針が妥当かを集計する。
+      tags:
+        - Evaluation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroundednessCaseEvaluationRequest'
+      responses:
+        '200':
+          description: groundedness 評価成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroundednessCaseEvaluationResponse'
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/groundedness-evaluations/default:
+    get:
+      operationId: evaluateDefaultGroundednessCases
+      summary: 標準 groundedness 評価を実行する
+      description: |-
+        classpath 上の evaluation/groundedness-cases.json を読み込み、
+        groundedness judge と fallback 方針の標準評価セットを実行する。
+      tags:
+        - Evaluation
+      responses:
+        '200':
+          description: groundedness 評価成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroundednessCaseEvaluationResponse'
+        '400':
+          description: 評価ファイル不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 管理者権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/knowledge-documents:
     get:
       operationId: getKnowledgeDocuments
@@ -846,6 +908,7 @@ components:
         - groundednessScore
         - reason
         - status
+        - fallbackApplied
       properties:
         groundednessScore:
           type: number
@@ -859,6 +922,12 @@ components:
           enum:
             - GROUNDED
             - LOW_GROUNDEDNESS
+            - NO_EVIDENCE
+            - PARSE_FAILED
+            - JUDGE_ERROR
+        fallbackApplied:
+          type: boolean
+          description: 低信頼判定により保守的な fallback 応答へ切り替えたか
 
     UsageInfo:
       type: object
@@ -938,6 +1007,7 @@ components:
       required:
         - id
         - model
+        - groundednessEvaluation
         - promptTokens
         - completionTokens
         - totalTokens
@@ -950,6 +1020,8 @@ components:
           format: int64
         model:
           type: string
+        groundednessEvaluation:
+          $ref: '#/components/schemas/GroundednessEvaluation'
         promptTokens:
           type: integer
         completionTokens:
@@ -973,6 +1045,7 @@ components:
         - model
         - prompt
         - response
+        - groundednessEvaluation
         - promptTokens
         - completionTokens
         - totalTokens
@@ -989,6 +1062,8 @@ components:
           type: string
         response:
           type: string
+        groundednessEvaluation:
+          $ref: '#/components/schemas/GroundednessEvaluation'
         promptTokens:
           type: integer
         completionTokens:
@@ -1011,6 +1086,10 @@ components:
         - totalAdviceRequests
         - averageLatencyMs
         - averageCostJpy
+        - averageGroundednessScore
+        - groundedResponses
+        - lowGroundednessResponses
+        - groundednessFallbackResponses
         - reindexSuccessRate
         - completedReindexJobs
         - failedReindexJobs
@@ -1037,6 +1116,18 @@ components:
         averageCostJpy:
           type: number
           format: double
+        averageGroundednessScore:
+          type: number
+          format: double
+        groundedResponses:
+          type: integer
+          format: int64
+        lowGroundednessResponses:
+          type: integer
+          format: int64
+        groundednessFallbackResponses:
+          type: integer
+          format: int64
         reindexSuccessRate:
           type: number
           format: double
@@ -1394,6 +1485,159 @@ components:
         actualOutcome:
           type: string
           description: BLOCK または ALLOW
+
+    GroundednessCaseEvaluationRequest:
+      type: object
+      required:
+        - cases
+      properties:
+        cases:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/GroundednessCaseEvaluationCaseRequest'
+
+    GroundednessCaseEvaluationCaseRequest:
+      type: object
+      required:
+        - situation
+        - targetGoal
+        - advice
+        - expectedStatus
+        - retrievedDocuments
+      properties:
+        label:
+          type: string
+        situation:
+          type: string
+        targetGoal:
+          type: string
+        advice:
+          type: string
+        expectedStatus:
+          type: string
+          enum:
+            - GROUNDED
+            - LOW_GROUNDEDNESS
+            - NO_EVIDENCE
+            - PARSE_FAILED
+            - JUDGE_ERROR
+        expectedFallbackApplied:
+          type: boolean
+        retrievedDocuments:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroundednessCaseEvaluationEvidence'
+
+    GroundednessCaseEvaluationEvidence:
+      type: object
+      required:
+        - title
+        - excerpt
+        - aceCategory
+      properties:
+        title:
+          type: string
+        excerpt:
+          type: string
+        aceCategory:
+          type: string
+          enum:
+            - ABILITY
+            - CULTURE
+            - EXPECTATION
+
+    GroundednessCaseEvaluationResponse:
+      type: object
+      required:
+        - totalCases
+        - matchedCases
+        - groundedCases
+        - lowGroundednessCases
+        - noEvidenceCases
+        - parseFailedCases
+        - judgeErrorCases
+        - fallbackAppliedCases
+        - accuracy
+        - averageGroundednessScore
+        - caseResults
+      properties:
+        totalCases:
+          type: integer
+        matchedCases:
+          type: integer
+        groundedCases:
+          type: integer
+        lowGroundednessCases:
+          type: integer
+        noEvidenceCases:
+          type: integer
+        parseFailedCases:
+          type: integer
+        judgeErrorCases:
+          type: integer
+        fallbackAppliedCases:
+          type: integer
+        accuracy:
+          type: number
+          format: double
+        averageGroundednessScore:
+          type: number
+          format: double
+        caseResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroundednessCaseEvaluationCaseResult'
+
+    GroundednessCaseEvaluationCaseResult:
+      type: object
+      required:
+        - situation
+        - targetGoal
+        - advice
+        - expectedStatus
+        - actualStatus
+        - expectedFallbackApplied
+        - fallbackApplied
+        - matched
+        - groundednessScore
+        - reason
+      properties:
+        label:
+          type: string
+        situation:
+          type: string
+        targetGoal:
+          type: string
+        advice:
+          type: string
+        expectedStatus:
+          type: string
+          enum:
+            - GROUNDED
+            - LOW_GROUNDEDNESS
+            - NO_EVIDENCE
+            - PARSE_FAILED
+            - JUDGE_ERROR
+        actualStatus:
+          type: string
+          enum:
+            - GROUNDED
+            - LOW_GROUNDEDNESS
+            - NO_EVIDENCE
+            - PARSE_FAILED
+            - JUDGE_ERROR
+        expectedFallbackApplied:
+          type: boolean
+        fallbackApplied:
+          type: boolean
+        matched:
+          type: boolean
+        groundednessScore:
+          type: number
+          format: double
+        reason:
+          type: string
 
     KnowledgeDocumentCreateRequest:
       type: object

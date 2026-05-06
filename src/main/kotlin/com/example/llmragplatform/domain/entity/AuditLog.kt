@@ -31,5 +31,13 @@ class AuditLog(
     @Column(nullable = false)
     val latencyMs: Long,
     @Column(nullable = false)
+    val groundednessScore: Double,
+    @Column(nullable = false)
+    val groundednessStatus: String,
+    @Column(columnDefinition = "TEXT", nullable = false)
+    val groundednessReason: String,
+    @Column(nullable = false)
+    val groundednessFallbackApplied: Boolean,
+    @Column(nullable = false)
     val createdAt: Instant = Instant.now(),
 )
