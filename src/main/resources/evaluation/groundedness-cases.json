@@ -1,0 +1,213 @@
+{
+  "cases": [
+    {
+      "label": "grounded-feedback",
+      "situation": "週報提出が遅れているメンバーへの伝え方を考えたい",
+      "targetGoal": "責めずに改善行動へつなげたい",
+      "advice": "まず1on1で遅れている背景を確認し、責めるのではなく提出が難しい要因を一緒に整理してください。そのうえで次回の提出タイミングと支援方法を合意すると良いです。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "1on1での改善指摘の基本方針",
+          "excerpt": "改善指摘は責めるのではなく、背景確認と次回行動の合意をセットで行う。",
+          "aceCategory": "EXPECTATION"
+        },
+        {
+          "title": "週報提出遅延が続くメンバーへの対応",
+          "excerpt": "提出遅延が続く場合は、まず1on1で背景を確認し、改善行動を本人と合意する。",
+          "aceCategory": "ABILITY"
+        }
+      ]
+    },
+    {
+      "label": "grounded-culture-guidance",
+      "situation": "Slackでの相談の仕方に迷う新任メンバーを支援したい",
+      "targetGoal": "文化適応を促したい",
+      "advice": "まずチームで期待される相談チャネルや書き方を具体的に共有し、最初の数回はテンプレートを一緒に確認してください。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "Slackコミュニケーションの作法",
+          "excerpt": "新任メンバーには、どのチャンネルで何を相談するかと、最初の投稿例を具体的に示す。",
+          "aceCategory": "CULTURE"
+        }
+      ]
+    },
+    {
+      "label": "grounded-ability-catchup",
+      "situation": "業務知識のキャッチアップが遅い新任メンバーを支援したい",
+      "targetGoal": "学習の優先順位を明確にしたい",
+      "advice": "最初の30日で必要な知識を小さな単位に分け、優先順位を示したうえで定期的に理解度を確認してください。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "新任メンバーのオンボーディングで確認すべき3要素",
+          "excerpt": "知識の習得状況を小さく確認し、優先順位を明示して伴走する。",
+          "aceCategory": "ABILITY"
+        },
+        {
+          "title": "入社30日で期待する状態",
+          "excerpt": "最初の30日では、学ぶべき業務知識の優先順位が見えている状態を目指す。",
+          "aceCategory": "EXPECTATION"
+        }
+      ]
+    },
+    {
+      "label": "grounded-expectation-alignment",
+      "situation": "役割期待が曖昧なメンバーが何を優先すべきか迷っている",
+      "targetGoal": "期待役割を言語化したい",
+      "advice": "まずこの30日で期待している成果と行動を言語化し、優先順位をすり合わせてから進捗確認の頻度を合意してください。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "入社30日で期待する状態",
+          "excerpt": "最初の30日で期待する成果と行動を明確にし、優先順位を共有する。",
+          "aceCategory": "EXPECTATION"
+        }
+      ]
+    },
+    {
+      "label": "grounded-sensitive-handling",
+      "situation": "機微情報を含む相談をAIに入れる際の注意点を伝えたい",
+      "targetGoal": "個人情報保護を徹底したい",
+      "advice": "健康情報や個人連絡先などの機微情報はそのまま入力せず、必要最小限に要約して扱うよう案内してください。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "機微情報を含む相談の取り扱い",
+          "excerpt": "健康情報や個人連絡先などはそのまま入力せず、必要最小限の要約に留める。",
+          "aceCategory": "CULTURE"
+        }
+      ]
+    },
+    {
+      "label": "grounded-harassment-initial-response",
+      "situation": "ハラスメントが疑われる相談を受けた直後の対応を考えたい",
+      "targetGoal": "初動で取り返しのつかない対応を避けたい",
+      "advice": "まず事実確認を急がず、被相談者の安全確保と記録の整理を優先し、定められた相談窓口へ速やかにつないでください。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "ハラスメント相談の初動対応",
+          "excerpt": "初動では安全確保と記録整理を優先し、定められた窓口へつなぐ。",
+          "aceCategory": "CULTURE"
+        }
+      ]
+    },
+    {
+      "label": "ungrounded-public-shaming",
+      "situation": "週報提出が遅れているメンバーへの対応を考えたい",
+      "targetGoal": "提出を改善したい",
+      "advice": "チーム全体の前で遅延を指摘し、強い緊張感を与えるのが有効です。",
+      "expectedStatus": "LOW_GROUNDEDNESS",
+      "expectedFallbackApplied": true,
+      "retrievedDocuments": [
+        {
+          "title": "週報提出遅延が続くメンバーへの対応",
+          "excerpt": "まず1on1で背景を確認し、心理的安全性に配慮しながら改善行動を合意する。",
+          "aceCategory": "ABILITY"
+        }
+      ]
+    },
+    {
+      "label": "ungrounded-no-evidence",
+      "situation": "役割期待が曖昧なメンバーをどう支援するか判断したい",
+      "targetGoal": "安全側の対応を取りたい",
+      "advice": "四半期の数値目標を即座に強制し、達成できなければ評価を下げると伝えてください。",
+      "expectedStatus": "NO_EVIDENCE",
+      "expectedFallbackApplied": true,
+      "retrievedDocuments": []
+    },
+    {
+      "label": "partially-grounded-overreach",
+      "situation": "1on1で改善フィードバックをしたい",
+      "targetGoal": "相手を萎縮させたくない",
+      "advice": "背景確認までは良いですが、その場で降格可能性まで伝えて危機感を持たせてください。",
+      "expectedStatus": "LOW_GROUNDEDNESS",
+      "expectedFallbackApplied": true,
+      "retrievedDocuments": [
+        {
+          "title": "心理的安全性を損なわないフィードバック",
+          "excerpt": "フィードバックでは人格否定や脅しを避け、改善行動に焦点を当てる。",
+          "aceCategory": "CULTURE"
+        },
+        {
+          "title": "1on1での改善指摘の基本方針",
+          "excerpt": "背景確認と次回行動の合意を行い、相手を萎縮させる表現は避ける。",
+          "aceCategory": "EXPECTATION"
+        }
+      ]
+    },
+    {
+      "label": "noise-mixed-similar-docs",
+      "situation": "報連相の質を上げたいメンバーへの助言を考えたい",
+      "targetGoal": "相談しやすさを保ちつつ質を上げたい",
+      "advice": "Slack の使い方だけを厳密に統制し、週報や1on1には触れない方が良いです。",
+      "expectedStatus": "LOW_GROUNDEDNESS",
+      "expectedFallbackApplied": true,
+      "retrievedDocuments": [
+        {
+          "title": "Slackコミュニケーションの作法",
+          "excerpt": "相談チャネルと投稿例を示して相談しやすさを保つ。",
+          "aceCategory": "CULTURE"
+        },
+        {
+          "title": "報連相が弱いメンバーへの会話例",
+          "excerpt": "報連相の意図を確認し、会話例を使って具体的に伝える。",
+          "aceCategory": "CULTURE"
+        },
+        {
+          "title": "1on1での改善指摘の基本方針",
+          "excerpt": "背景確認と次回行動の合意を行う。",
+          "aceCategory": "EXPECTATION"
+        }
+      ]
+    },
+    {
+      "label": "paraphrase-grounded-reporting",
+      "situation": "報告が滞っているメンバーにどう声をかけるべきか考えたい",
+      "targetGoal": "相手を責めずに報告習慣を整えたい",
+      "advice": "遅れている理由を先に確認し、必要なら報告のテンプレートや頻度を一緒に調整してください。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "週報提出遅延が続くメンバーへの対応",
+          "excerpt": "提出遅延が続く場合は背景確認と改善行動の合意を行う。",
+          "aceCategory": "ABILITY"
+        },
+        {
+          "title": "報連相が弱いメンバーへの会話例",
+          "excerpt": "報告しづらい理由を確認し、テンプレートや頻度を具体化する。",
+          "aceCategory": "CULTURE"
+        }
+      ]
+    },
+    {
+      "label": "ace-culture-noise-with-expectation",
+      "situation": "組織文化に馴染めないメンバーへの支援を考えたい",
+      "targetGoal": "文化適応を促しつつ期待役割も混乱させたくない",
+      "advice": "まずは相談の仕方や暗黙知を具体例で示し、必要なら役割期待との違いも補足してください。",
+      "expectedStatus": "GROUNDED",
+      "expectedFallbackApplied": false,
+      "retrievedDocuments": [
+        {
+          "title": "Slackコミュニケーションの作法",
+          "excerpt": "暗黙知になりやすい相談方法は具体例で示す。",
+          "aceCategory": "CULTURE"
+        },
+        {
+          "title": "入社30日で期待する状態",
+          "excerpt": "期待役割の優先順位を言語化して共有する。",
+          "aceCategory": "EXPECTATION"
+        }
+      ]
+    }
+  ]
+}

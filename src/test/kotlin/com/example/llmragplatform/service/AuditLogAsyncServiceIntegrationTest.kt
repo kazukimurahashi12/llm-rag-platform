@@ -41,7 +41,11 @@ class AuditLogAsyncServiceIntegrationTest {
             completionTokens = 80,
             totalTokens = 200,
             costJpy = 0.0099,
-            latencyMs = 150
+            latencyMs = 150,
+            groundednessScore = 0.85,
+            groundednessStatus = "GROUNDED",
+            groundednessReason = "取得根拠に沿っています。",
+            groundednessFallbackApplied = false
         )
 
         val savedLog = waitUntilSaved()
@@ -54,6 +58,10 @@ class AuditLogAsyncServiceIntegrationTest {
         assertEquals(200, savedLog.totalTokens)
         assertEquals(0.0099, savedLog.costJpy, 0.0000001)
         assertEquals(150, savedLog.latencyMs)
+        assertEquals(0.85, savedLog.groundednessScore, 0.0000001)
+        assertEquals("GROUNDED", savedLog.groundednessStatus)
+        assertEquals("取得根拠に沿っています。", savedLog.groundednessReason)
+        assertEquals(false, savedLog.groundednessFallbackApplied)
         assertTrue(savedLog.createdAt.toEpochMilli() > 0)
     }
 

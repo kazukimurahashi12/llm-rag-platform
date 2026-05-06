@@ -11,4 +11,7 @@ data class RagProperties(
     val minSimilarityScore: Double? = null,
     val rerankEnabled: Boolean = false,
     val rerankCandidateMultiplier: Int = 3,
+    val groundednessThreshold: Double = 0.7,
+    val groundednessFallbackEnabled: Boolean = true,
+    val groundednessFallbackScoreThreshold: Double = 0.3,
 )

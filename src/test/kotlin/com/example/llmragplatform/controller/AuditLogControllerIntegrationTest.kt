@@ -60,6 +60,10 @@ class AuditLogControllerIntegrationTest {
                     totalTokens = 120,
                     costJpy = 0.0047,
                     latencyMs = 120,
+                    groundednessScore = 0.75,
+                    groundednessStatus = "GROUNDED",
+                    groundednessReason = "根拠に沿っている",
+                    groundednessFallbackApplied = false,
                     createdAt = Instant.parse("2026-04-05T08:00:00Z")
                 ),
                 AuditLog(
@@ -71,6 +75,10 @@ class AuditLogControllerIntegrationTest {
                     totalTokens = 250,
                     costJpy = 0.1725,
                     latencyMs = 240,
+                    groundednessScore = 0.30,
+                    groundednessStatus = "LOW_GROUNDEDNESS",
+                    groundednessReason = "根拠が不足している",
+                    groundednessFallbackApplied = true,
                     createdAt = Instant.parse("2026-04-05T09:00:00Z")
                 ),
                 AuditLog(
@@ -82,6 +90,10 @@ class AuditLogControllerIntegrationTest {
                     totalTokens = 300,
                     costJpy = 0.1125,
                     latencyMs = 180,
+                    groundednessScore = 0.95,
+                    groundednessStatus = "GROUNDED",
+                    groundednessReason = "取得根拠に十分沿っている",
+                    groundednessFallbackApplied = false,
                     createdAt = Instant.parse("2026-04-05T10:00:00Z")
                 )
             )
@@ -102,6 +114,9 @@ class AuditLogControllerIntegrationTest {
             .andExpect(jsonPath("$.limit").value(1))
             .andExpect(jsonPath("$.offset").value(0))
             .andExpect(jsonPath("$.items[0].model").value("gpt-4o-mini"))
+            .andExpect(jsonPath("$.items[0].groundednessEvaluation.groundednessScore").value(0.95))
+            .andExpect(jsonPath("$.items[0].groundednessEvaluation.status").value("GROUNDED"))
+            .andExpect(jsonPath("$.items[0].groundednessEvaluation.fallbackApplied").value(false))
             .andExpect(jsonPath("$.items[0].totalTokens").value(300))
             .andExpect(jsonPath("$.items[0].createdAt").value("2026-04-05T10:00:00Z"))
     }
@@ -151,6 +166,10 @@ class AuditLogControllerIntegrationTest {
             .andExpect(jsonPath("$.model").value("gpt-4o-mini"))
             .andExpect(jsonPath("$.prompt").value("latest prompt with mail latest@example.com and phone 090-1111-2222 for operator visibility test"))
             .andExpect(jsonPath("$.response").value("latest response with latest@example.com and 090-1111-2222 included for redaction testing"))
+            .andExpect(jsonPath("$.groundednessEvaluation.groundednessScore").value(0.95))
+            .andExpect(jsonPath("$.groundednessEvaluation.status").value("GROUNDED"))
+            .andExpect(jsonPath("$.groundednessEvaluation.reason").value("取得根拠に十分沿っている"))
+            .andExpect(jsonPath("$.groundednessEvaluation.fallbackApplied").value(false))
             .andExpect(jsonPath("$.totalTokens").value(300))
             .andExpect(jsonPath("$.createdAt").value("2026-04-05T10:00:00Z"))
     }
@@ -204,6 +223,9 @@ class AuditLogControllerIntegrationTest {
             .andExpect(jsonPath("$.model").value("gpt-4o-mini"))
             .andExpect(jsonPath("$.prompt").value("latest prompt with mail [MASKED_EMAIL] and phone [MASKED_PHONE] for operator vis... [REDACTED]"))
             .andExpect(jsonPath("$.response").value("latest response with [MASKED_EMAIL] and [MASKED_PHONE] included for redaction te... [REDACTED]"))
+            .andExpect(jsonPath("$.groundednessEvaluation.groundednessScore").value(0.95))
+            .andExpect(jsonPath("$.groundednessEvaluation.status").value("GROUNDED"))
+            .andExpect(jsonPath("$.groundednessEvaluation.fallbackApplied").value(false))
     }
 
     private fun httpBasic(username: String, @Suppress("UNUSED_PARAMETER") password: String): RequestPostProcessor {

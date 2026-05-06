@@ -17,6 +17,10 @@ export interface DashboardSummaryResponse {
   totalAdviceRequests: number;
   averageLatencyMs: number;
   averageCostJpy: number;
+  averageGroundednessScore: number;
+  groundedResponses: number;
+  lowGroundednessResponses: number;
+  groundednessFallbackResponses: number;
   reindexSuccessRate: number;
   completedReindexJobs: number;
   failedReindexJobs: number;
@@ -123,6 +127,34 @@ export interface PromptInjectionEvaluationResponse {
   caseResults: PromptInjectionEvaluationCaseResult[];
 }
 
+export interface GroundednessCaseEvaluationCaseResult {
+  label?: string;
+  situation: string;
+  targetGoal: string;
+  advice: string;
+  expectedStatus: "GROUNDED" | "LOW_GROUNDEDNESS" | "NO_EVIDENCE" | "PARSE_FAILED" | "JUDGE_ERROR";
+  actualStatus: "GROUNDED" | "LOW_GROUNDEDNESS" | "NO_EVIDENCE" | "PARSE_FAILED" | "JUDGE_ERROR";
+  expectedFallbackApplied: boolean;
+  fallbackApplied: boolean;
+  matched: boolean;
+  groundednessScore: number;
+  reason: string;
+}
+
+export interface GroundednessCaseEvaluationResponse {
+  totalCases: number;
+  matchedCases: number;
+  groundedCases: number;
+  lowGroundednessCases: number;
+  noEvidenceCases: number;
+  parseFailedCases: number;
+  judgeErrorCases: number;
+  fallbackAppliedCases: number;
+  accuracy: number;
+  averageGroundednessScore: number;
+  caseResults: GroundednessCaseEvaluationCaseResult[];
+}
+
 export interface AdviceRequest {
   memberContext: {
     situation: string;
@@ -159,9 +191,17 @@ export interface AceAnalysis {
   reason: string;
 }
 
+export interface GroundednessEvaluation {
+  groundednessScore: number;
+  reason: string;
+  status: "GROUNDED" | "LOW_GROUNDEDNESS" | "NO_EVIDENCE" | "PARSE_FAILED" | "JUDGE_ERROR";
+  fallbackApplied: boolean;
+}
+
 export interface AdviceResponse {
   advice: string;
   aceAnalysis: AceAnalysis;
+  groundednessEvaluation: GroundednessEvaluation;
   usage: UsageInfo;
   retrievedDocuments: RetrievedDocument[];
 }
@@ -169,6 +209,7 @@ export interface AdviceResponse {
 export interface AuditLogSummaryItem {
   id: number;
   model: string;
+  groundednessEvaluation: GroundednessEvaluation;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
@@ -189,6 +230,7 @@ export interface AuditLogDetailResponse {
   model: string;
   prompt: string;
   response: string;
+  groundednessEvaluation: GroundednessEvaluation;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;

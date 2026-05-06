@@ -89,6 +89,10 @@ class DashboardControllerIntegrationTest {
                     totalTokens = 150,
                     costJpy = 0.10,
                     latencyMs = 120,
+                    groundednessScore = 0.90,
+                    groundednessStatus = "GROUNDED",
+                    groundednessReason = "根拠に沿っている",
+                    groundednessFallbackApplied = false,
                     createdAt = Instant.parse("2026-04-18T10:00:00Z")
                 ),
                 AuditLog(
@@ -100,6 +104,10 @@ class DashboardControllerIntegrationTest {
                     totalTokens = 180,
                     costJpy = 0.20,
                     latencyMs = 180,
+                    groundednessScore = 0.40,
+                    groundednessStatus = "LOW_GROUNDEDNESS",
+                    groundednessReason = "根拠が弱い",
+                    groundednessFallbackApplied = true,
                     createdAt = Instant.parse("2026-04-18T10:05:00Z")
                 )
             )
@@ -141,6 +149,10 @@ class DashboardControllerIntegrationTest {
             .andExpect(jsonPath("$.totalAdviceRequests").value(2))
             .andExpect(jsonPath("$.averageLatencyMs").value(150.0))
             .andExpect(jsonPath("$.averageCostJpy").value(0.15))
+            .andExpect(jsonPath("$.averageGroundednessScore").value(0.65))
+            .andExpect(jsonPath("$.groundedResponses").value(1))
+            .andExpect(jsonPath("$.lowGroundednessResponses").value(1))
+            .andExpect(jsonPath("$.groundednessFallbackResponses").value(1))
             .andExpect(jsonPath("$.completedReindexJobs").value(2))
             .andExpect(jsonPath("$.failedReindexJobs").value(1))
             .andExpect(jsonPath("$.reindexSuccessRate").value(0.6666666666666666))

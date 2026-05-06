@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import {
+  GroundednessCaseEvaluationResponse,
   PromptInjectionEvaluationResponse,
   RetrievalEvaluationComparisonRequest,
   RetrievalEvaluationComparisonResponse,
@@ -23,5 +24,15 @@ export async function compareRetrievalEvaluations(payload: RetrievalEvaluationCo
 
 export async function fetchDefaultPromptInjectionEvaluation() {
   const response = await apiClient.get<PromptInjectionEvaluationResponse>("/v1/prompt-injection-evaluations/default");
+  return response.data;
+}
+
+export async function fetchDefaultGroundednessEvaluation() {
+  const response = await apiClient.get<GroundednessCaseEvaluationResponse>(
+    "/v1/groundedness-evaluations/default",
+    {
+      timeout: 120000,
+    },
+  );
   return response.data;
 }

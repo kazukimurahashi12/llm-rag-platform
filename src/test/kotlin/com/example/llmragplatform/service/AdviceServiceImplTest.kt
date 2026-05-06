@@ -67,11 +67,22 @@ class AdviceServiceImplTest {
         val costCalculator = CostCalculator(testOpenAiProperties())
         val piiMaskingService = PiiMaskingService()
         val auditLogAsyncService = mock<AuditLogAsyncService>()
+        val groundednessEvaluationService = mock<GroundednessEvaluationService>()
+        whenever(groundednessEvaluationService.evaluate(org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any()))
+            .thenReturn(
+                GroundednessEvaluationResult(
+                    score = 0.9,
+                    reason = "取得根拠に沿っています。",
+                    status = GroundednessStatus.GROUNDED
+                )
+            )
         val service = AdviceServiceImpl(
             llmClient = llmClient,
             promptManager = promptManager,
             knowledgeRetrievalService = knowledgeRetrievalService,
             aceAnalysisService = aceAnalysisService,
+            ragProperties = RagProperties(vectorSearchEnabled = false, groundednessFallbackEnabled = true),
+            groundednessEvaluationService = groundednessEvaluationService,
             promptInjectionGuardService = promptInjectionGuardService,
             costCalculator = costCalculator,
             piiMaskingService = piiMaskingService,
@@ -97,6 +108,10 @@ class AdviceServiceImplTest {
         assertEquals("週報ガイド", response.retrievedDocuments[0].title)
         assertEquals(0, response.retrievedDocuments[0].chunkIndex)
         assertEquals(AceCategory.ABILITY.name, response.aceAnalysis.primaryCategory.value)
+        assertEquals(0.9, response.groundednessEvaluation.groundednessScore)
+        assertEquals("取得根拠に沿っています。", response.groundednessEvaluation.reason)
+        assertEquals("GROUNDED", response.groundednessEvaluation.status.value)
+        assertEquals(false, response.groundednessEvaluation.fallbackApplied)
         assertEquals(AceCategory.EXPECTATION.name, response.retrievedDocuments[0].aceCategory.value)
         assertNull(response.retrievedDocuments[0].distanceScore)
         assertNull(response.retrievedDocuments[0].similarityScore)
@@ -114,7 +129,11 @@ class AdviceServiceImplTest {
             completionTokens = org.mockito.kotlin.eq(80),
             totalTokens = org.mockito.kotlin.eq(200),
             costJpy = org.mockito.kotlin.eq(0.0099),
-            latencyMs = org.mockito.kotlin.any()
+            latencyMs = org.mockito.kotlin.any(),
+            groundednessScore = org.mockito.kotlin.eq(0.9),
+            groundednessStatus = org.mockito.kotlin.eq("GROUNDED"),
+            groundednessReason = org.mockito.kotlin.eq("取得根拠に沿っています。"),
+            groundednessFallbackApplied = org.mockito.kotlin.eq(false)
         )
         assertEquals(true, promptCaptor.firstValue.contains("management support AI"))
     }
@@ -147,11 +166,22 @@ class AdviceServiceImplTest {
         val costCalculator = CostCalculator(testOpenAiProperties())
         val piiMaskingService = PiiMaskingService()
         val auditLogAsyncService = mock<AuditLogAsyncService>()
+        val groundednessEvaluationService = mock<GroundednessEvaluationService>()
+        whenever(groundednessEvaluationService.evaluate(org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any()))
+            .thenReturn(
+                GroundednessEvaluationResult(
+                    score = 0.8,
+                    reason = "取得根拠に沿っています。",
+                    status = GroundednessStatus.GROUNDED
+                )
+            )
         val service = AdviceServiceImpl(
             llmClient = llmClient,
             promptManager = promptManager,
             knowledgeRetrievalService = knowledgeRetrievalService,
             aceAnalysisService = aceAnalysisService,
+            ragProperties = RagProperties(vectorSearchEnabled = false, groundednessFallbackEnabled = true),
+            groundednessEvaluationService = groundednessEvaluationService,
             promptInjectionGuardService = promptInjectionGuardService,
             costCalculator = costCalculator,
             piiMaskingService = piiMaskingService,
@@ -179,7 +209,11 @@ class AdviceServiceImplTest {
             completionTokens = org.mockito.kotlin.eq(80),
             totalTokens = org.mockito.kotlin.eq(200),
             costJpy = org.mockito.kotlin.eq(0.0099),
-            latencyMs = org.mockito.kotlin.any()
+            latencyMs = org.mockito.kotlin.any(),
+            groundednessScore = org.mockito.kotlin.eq(0.8),
+            groundednessStatus = org.mockito.kotlin.eq("GROUNDED"),
+            groundednessReason = org.mockito.kotlin.eq("取得根拠に沿っています。"),
+            groundednessFallbackApplied = org.mockito.kotlin.eq(false)
         )
 
         assertEquals(false, promptCaptor.firstValue.contains("yamada@example.com"))
@@ -221,6 +255,8 @@ class AdviceServiceImplTest {
             promptManager = promptManager,
             knowledgeRetrievalService = knowledgeRetrievalService,
             aceAnalysisService = aceAnalysisService,
+            ragProperties = RagProperties(vectorSearchEnabled = false, groundednessFallbackEnabled = true),
+            groundednessEvaluationService = mock(),
             promptInjectionGuardService = PromptInjectionGuardService(),
             costCalculator = CostCalculator(testOpenAiProperties()),
             piiMaskingService = PiiMaskingService(),

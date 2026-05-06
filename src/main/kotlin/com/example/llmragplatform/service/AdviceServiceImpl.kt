@@ -1,9 +1,11 @@
 package com.example.llmragplatform.service
 
+import com.example.llmragplatform.config.RagProperties
 import com.example.llmragplatform.domain.LlmClient
 import com.example.llmragplatform.generated.model.AceAnalysis
 import com.example.llmragplatform.generated.model.AdviceRequest
 import com.example.llmragplatform.generated.model.AdviceResponse
+import com.example.llmragplatform.generated.model.GroundednessEvaluation
 import com.example.llmragplatform.generated.model.RetrievedDocument
 import com.example.llmragplatform.generated.model.UsageInfo
 import org.springframework.beans.factory.annotation.Value
@@ -18,6 +20,8 @@ class AdviceServiceImpl(
     private val promptManager: PromptManager,
     private val knowledgeRetrievalService: KnowledgeRetrievalService,
     private val aceAnalysisService: AceAnalysisService,
+    private val ragProperties: RagProperties,
+    private val groundednessEvaluationService: GroundednessEvaluationService,
     private val promptInjectionGuardService: PromptInjectionGuardService,
     private val costCalculator: CostCalculator,
     private val piiMaskingService: PiiMaskingService,
@@ -83,6 +87,20 @@ class AdviceServiceImpl(
 
         // LLM を呼び出して助言文を生成する。
         val llmResponse = llmClient.chat(model, systemPrompt, userMessage)
+        // 生成後に、回答が取得根拠へ沿っているかを追加評価する。
+        val groundednessEvaluation = groundednessEvaluationService.evaluate(
+            situation = memberContext.situation,
+            targetGoal = memberContext.targetGoal,
+            advice = llmResponse.content,
+            retrievedKnowledge = retrievedKnowledge
+        )
+        // fallback は根拠ゼロか、かなり低い groundedness のときだけ適用する。
+        val fallbackApplied = ragProperties.groundednessFallbackEnabled && shouldApplyGroundednessFallback(groundednessEvaluation)
+        val finalAdvice = if (fallbackApplied) {
+            buildGroundednessFallbackAdvice(memberContext.situation, memberContext.targetGoal)
+        } else {
+            llmResponse.content
+        }
 
         // 現在時刻との差分から処理時間を算出する。
         val latencyMs = System.currentTimeMillis() - startTime
@@ -100,7 +118,7 @@ class AdviceServiceImpl(
         // 監査ログに保存する前に prompt 内の個人情報をマスクする。
         val maskedPrompt = piiMaskingService.maskText("$systemPrompt\n---\n$userMessage")
         // 監査ログに保存する前に応答内の個人情報をマスクする。
-        val maskedResponse = piiMaskingService.maskText(llmResponse.content)
+        val maskedResponse = piiMaskingService.maskText(finalAdvice)
 
         // 監査ログを非同期で保存する。
         auditLogAsyncService.save(
@@ -119,18 +137,36 @@ class AdviceServiceImpl(
             // 概算コストを記録する。
             costJpy = costJpy,
             // レイテンシを記録する。
-            latencyMs = latencyMs
+            latencyMs = latencyMs,
+            // groundedness スコアを記録する。
+            groundednessScore = groundednessEvaluation.score,
+            // groundedness 判定状態を記録する。
+            groundednessStatus = groundednessEvaluation.status.name,
+            // groundedness 判定理由を記録する。
+            groundednessReason = groundednessEvaluation.reason,
+            // groundedness 低信頼時の fallback 適用有無を記録する。
+            groundednessFallbackApplied = fallbackApplied
         )
 
         // API レスポンスを組み立てて返す。
         return AdviceResponse()
             // 生成した助言本文を設定する。
-            .advice(llmResponse.content)
+            .advice(finalAdvice)
             // 相談文の ACE 分析結果を設定する。
             .aceAnalysis(
                 AceAnalysis()
                     .primaryCategory(AceAnalysis.PrimaryCategoryEnum.fromValue(aceAnalysis.primaryCategory.name))
                     .reason(aceAnalysis.reason)
+            )
+            // 回答がどれだけ根拠文書に沿っているかの評価結果を設定する。
+            .groundednessEvaluation(
+                GroundednessEvaluation()
+                    .groundednessScore(groundednessEvaluation.score)
+                    .reason(groundednessEvaluation.reason)
+                    .fallbackApplied(fallbackApplied)
+                    .status(
+                        GroundednessEvaluation.StatusEnum.fromValue(groundednessEvaluation.status.name)
+                    )
             )
             // 検索で取得した根拠文書一覧を設定する。
             .retrievedDocuments(
@@ -169,5 +205,43 @@ class AdviceServiceImpl(
                     // 概算コストを設定する。
                     .estimatedCostJpy(costJpy)
             )
+    }
+
+    /**
+     * 根拠不足時に返す保守的な fallback 応答を組み立てる。
+     *
+     * @param situation 相談中の状況説明。
+     * @param targetGoal 達成したい目標。
+     * @return 定型の fallback 応答文。
+     */
+    private fun buildGroundednessFallbackAdvice(situation: String, targetGoal: String): String {
+        return """
+            現時点では、取得できた根拠だけでは十分に裏づけられた助言を返せませんでした。
+            まずは関連ナレッジの追加・更新や再インデックスを行ったうえで、もう一度確認してください。
+
+            状況: $situation
+            目標: $targetGoal
+
+            推奨アクション:
+            1. 関連する社内ガイドや評価基準の文書を見直す
+            2. ACE 分類とアクセス範囲が適切か確認する
+            3. 再インデックス後に再度助言生成を実行する
+        """.trimIndent()
+    }
+
+    /**
+     * groundedness 評価結果を見て fallback 応答へ切り替えるべきか判定する。
+     *
+     * @param evaluation 生成後 groundedness 評価結果。
+     * @return fallback を適用する場合は true。
+     */
+    private fun shouldApplyGroundednessFallback(evaluation: GroundednessEvaluationResult): Boolean {
+        return when (evaluation.status) {
+            GroundednessStatus.NO_EVIDENCE -> true
+            GroundednessStatus.LOW_GROUNDEDNESS -> evaluation.score < ragProperties.groundednessFallbackScoreThreshold
+            GroundednessStatus.PARSE_FAILED,
+            GroundednessStatus.JUDGE_ERROR,
+            GroundednessStatus.GROUNDED -> false
+        }
     }
 }

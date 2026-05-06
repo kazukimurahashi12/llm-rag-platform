@@ -25,6 +25,10 @@ class AuditLogAsyncService(
      * @param totalTokens 合計 token 数。
      * @param costJpy 円換算した概算コスト。
      * @param latencyMs リクエスト処理時間。
+     * @param groundednessScore 回答が根拠に沿っている度合いの採点値。
+     * @param groundednessStatus groundedness 判定状態。
+     * @param groundednessReason groundedness 判定理由。
+     * @param groundednessFallbackApplied 低信頼時の保守的 fallback を適用したか。
      */
     fun save(
         model: String,
@@ -35,6 +39,10 @@ class AuditLogAsyncService(
         totalTokens: Int,
         costJpy: Double,
         latencyMs: Long,
+        groundednessScore: Double,
+        groundednessStatus: String,
+        groundednessReason: String,
+        groundednessFallbackApplied: Boolean,
     ) {
         // 受け取った監査情報を永続化エンティティへ詰め替えて保存する。
         auditLogRepository.save(
@@ -54,7 +62,15 @@ class AuditLogAsyncService(
                 // 概算コストを保存する。
                 costJpy = costJpy,
                 // レイテンシを保存する。
-                latencyMs = latencyMs
+                latencyMs = latencyMs,
+                // groundedness スコアを保存する。
+                groundednessScore = groundednessScore,
+                // groundedness 判定状態を保存する。
+                groundednessStatus = groundednessStatus,
+                // groundedness 判定理由を保存する。
+                groundednessReason = groundednessReason,
+                // 保守的 fallback を適用したかを保存する。
+                groundednessFallbackApplied = groundednessFallbackApplied
             )
         )
     }

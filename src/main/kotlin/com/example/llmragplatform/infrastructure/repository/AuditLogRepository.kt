@@ -11,4 +11,11 @@ interface AuditLogRepository : JpaRepository<AuditLog, Long>, JpaSpecificationEx
 
     @Query("select avg(a.costJpy) from AuditLog a")
     fun findAverageCostJpy(): Double?
+
+    @Query("select avg(a.groundednessScore) from AuditLog a")
+    fun findAverageGroundednessScore(): Double?
+
+    fun countByGroundednessStatus(groundednessStatus: String): Long
+
+    fun countByGroundednessFallbackAppliedTrue(): Long
 }

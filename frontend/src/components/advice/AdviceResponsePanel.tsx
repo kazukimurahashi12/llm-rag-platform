@@ -49,6 +49,21 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
       </Stack>
 
       <Stack spacing={1.25}>
+        <Typography variant="subtitle1">Groundedness</Typography>
+        <Stack direction="row" flexWrap="wrap" gap={1}>
+          <UsagePill label="判定" value={data.groundednessEvaluation.status} />
+          <UsagePill label="スコア" value={formatNumber(data.groundednessEvaluation.groundednessScore, 2)} />
+          <UsagePill label="Fallback" value={data.groundednessEvaluation.fallbackApplied ? "APPLIED" : "NONE"} />
+        </Stack>
+        <Typography color="text.secondary">{data.groundednessEvaluation.reason}</Typography>
+        {data.groundednessEvaluation.fallbackApplied ? (
+          <Typography color="warning.main">
+            groundedness が低いため、回答は保守的な fallback 応答へ切り替えています。
+          </Typography>
+        ) : null}
+      </Stack>
+
+      <Stack spacing={1.25}>
         <Typography variant="subtitle1">使用量</Typography>
         <Stack direction="row" flexWrap="wrap" gap={1}>
           <UsagePill label="モデル" value={data.usage.model} />

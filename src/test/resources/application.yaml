@@ -24,3 +24,6 @@ rag:
   min-similarity-score:
   rerank-enabled: false
   rerank-candidate-multiplier: 3
+  groundedness-threshold: 0.7
+  groundedness-fallback-enabled: true
+  groundedness-fallback-score-threshold: 0.3

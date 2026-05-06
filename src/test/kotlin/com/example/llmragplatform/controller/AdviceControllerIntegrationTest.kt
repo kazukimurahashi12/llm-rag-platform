@@ -77,14 +77,24 @@ class AdviceControllerIntegrationTest {
 
     @Test
     fun `post advice persists audit log and returns response`() {
-        whenever(llmClient.chat(eq("gpt-4o-mini"), any(), any())).thenReturn(
-            LlmResponse(
-                content = "具体的なフィードバック案です。",
-                model = "gpt-4o-mini",
-                promptTokens = 120,
-                completionTokens = 80
+        val savedDocument = knowledgeDocumentRepository.save(
+            KnowledgeDocument(
+                title = "週報ガイド",
+                content = "週報提出が遅れている場合は重要性を伝える。",
+                accessScope = KnowledgeDocumentAccessScope.SHARED,
+                aceCategory = AceCategory.ABILITY,
+                createdAt = Instant.parse("2026-04-07T00:00:00Z")
             )
         )
+        knowledgeDocumentChunkRepository.save(
+            KnowledgeDocumentChunk(
+                knowledgeDocument = savedDocument,
+                chunkIndex = 0,
+                content = "週報提出が遅れている場合は重要性を伝える。",
+                createdAt = Instant.parse("2026-04-07T00:00:00Z")
+            )
+        )
+        mockGroundedAdvice()
 
         mockMvc.perform(
             post("/v1/management/advice")
@@ -107,15 +117,17 @@ class AdviceControllerIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.advice").value("具体的なフィードバック案です。"))
             .andExpect(jsonPath("$.aceAnalysis.primaryCategory").value("ABILITY"))
+            .andExpect(jsonPath("$.groundednessEvaluation.status").value("GROUNDED"))
+            .andExpect(jsonPath("$.groundednessEvaluation.fallbackApplied").value(false))
             .andExpect(jsonPath("$.aceAnalysis.reason").isString)
             .andExpect(jsonPath("$.usage.model").value("gpt-4o-mini"))
             .andExpect(jsonPath("$.usage.promptTokens").value(120))
             .andExpect(jsonPath("$.usage.completionTokens").value(80))
             .andExpect(jsonPath("$.usage.totalTokens").value(200))
             .andExpect(jsonPath("$.usage.estimatedCostJpy").value(0.0099))
-            .andExpect(jsonPath("$.retrievedDocuments.length()").value(0))
+            .andExpect(jsonPath("$.retrievedDocuments.length()").value(1))
 
-        verify(llmClient).chat(eq("gpt-4o-mini"), any(), any())
+        verify(llmClient, org.mockito.kotlin.times(2)).chat(eq("gpt-4o-mini"), any(), any())
 
         val savedLog = waitUntilSaved()
         assertEquals("gpt-4o-mini", savedLog.model)
@@ -124,18 +136,29 @@ class AdviceControllerIntegrationTest {
         assertEquals(80, savedLog.completionTokens)
         assertEquals(200, savedLog.totalTokens)
         assertEquals(0.0099, savedLog.costJpy, 0.0000001)
+        assertEquals(false, savedLog.groundednessFallbackApplied)
     }
 
     @Test
     fun `post advice masks pii in audit log and keeps api response unchanged`() {
-        whenever(llmClient.chat(eq("gpt-4o-mini"), any(), any())).thenReturn(
-            LlmResponse(
-                content = "連絡は tanaka@example.com と 090-9999-8888 へお願いします。",
-                model = "gpt-4o-mini",
-                promptTokens = 120,
-                completionTokens = 80
+        val savedDocument = knowledgeDocumentRepository.save(
+            KnowledgeDocument(
+                title = "個別連絡ガイド",
+                content = "通知したい場合は支援導線を整理して連絡する。",
+                accessScope = KnowledgeDocumentAccessScope.SHARED,
+                aceCategory = AceCategory.CULTURE,
+                createdAt = Instant.parse("2026-04-07T00:00:00Z")
             )
         )
+        knowledgeDocumentChunkRepository.save(
+            KnowledgeDocumentChunk(
+                knowledgeDocument = savedDocument,
+                chunkIndex = 0,
+                content = "通知したい場合は支援導線を整理して連絡する。",
+                createdAt = Instant.parse("2026-04-07T00:00:00Z")
+            )
+        )
+        mockGroundedAdvice(content = "連絡は tanaka@example.com と 090-9999-8888 へお願いします。")
 
         mockMvc.perform(
             post("/v1/management/advice")
@@ -184,14 +207,7 @@ class AdviceControllerIntegrationTest {
             )
         )
 
-        whenever(llmClient.chat(eq("gpt-4o-mini"), any(), any())).thenReturn(
-            LlmResponse(
-                content = "具体的なフィードバック案です。",
-                model = "gpt-4o-mini",
-                promptTokens = 120,
-                completionTokens = 80
-            )
-        )
+        mockGroundedAdvice()
 
         mockMvc.perform(
             post("/v1/management/advice")
@@ -236,14 +252,7 @@ class AdviceControllerIntegrationTest {
             )
         )
 
-        whenever(llmClient.chat(eq("gpt-4o-mini"), any(), any())).thenReturn(
-            LlmResponse(
-                content = "具体的なフィードバック案です。",
-                model = "gpt-4o-mini",
-                promptTokens = 120,
-                completionTokens = 80
-            )
-        )
+        mockGroundedAdvice()
 
         mockMvc.perform(
             post("/v1/management/advice")
@@ -284,14 +293,7 @@ class AdviceControllerIntegrationTest {
             )
         )
 
-        whenever(llmClient.chat(eq("gpt-4o-mini"), any(), any())).thenReturn(
-            LlmResponse(
-                content = "具体的なフィードバック案です。",
-                model = "gpt-4o-mini",
-                promptTokens = 120,
-                completionTokens = 80
-            )
-        )
+        mockGroundedAdvice()
 
         mockMvc.perform(
             post("/v1/management/advice")
@@ -342,6 +344,71 @@ class AdviceControllerIntegrationTest {
             Thread.sleep(100)
         }
         error("Audit log was not persisted within timeout")
+    }
+
+    @Test
+    fun `post advice returns fallback response when groundedness is low`() {
+        whenever(llmClient.chat(eq("gpt-4o-mini"), any(), any()))
+            .thenReturn(
+                LlmResponse(
+                    content = "断定的な助言です。",
+                    model = "gpt-4o-mini",
+                    promptTokens = 120,
+                    completionTokens = 80
+                )
+            )
+            .thenReturn(
+                LlmResponse(
+                    content = """{"groundednessScore":0.2,"reason":"根拠が不足しています。"}""",
+                    model = "gpt-4o-mini",
+                    promptTokens = 30,
+                    completionTokens = 20
+                )
+            )
+
+        mockMvc.perform(
+            post("/v1/management/advice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "memberContext": {
+                        "situation": "期待役割が曖昧で判断材料が足りない",
+                        "targetGoal": "安全側で次の行動を決めたい"
+                      }
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.advice").value(org.hamcrest.Matchers.containsString("十分に裏づけられた助言を返せませんでした")))
+            .andExpect(jsonPath("$.groundednessEvaluation.status").value("NO_EVIDENCE"))
+            .andExpect(jsonPath("$.groundednessEvaluation.fallbackApplied").value(true))
+
+        val savedLog = waitUntilSaved()
+        assertEquals(true, savedLog.groundednessFallbackApplied)
+        assertEquals("NO_EVIDENCE", savedLog.groundednessStatus)
+        assertEquals(true, savedLog.response.contains("十分に裏づけられた助言を返せませんでした"))
+    }
+
+    private fun mockGroundedAdvice(content: String = "具体的なフィードバック案です。") {
+        whenever(llmClient.chat(eq("gpt-4o-mini"), any(), any()))
+            .thenReturn(
+                LlmResponse(
+                    content = content,
+                    model = "gpt-4o-mini",
+                    promptTokens = 120,
+                    completionTokens = 80
+                )
+            )
+            .thenReturn(
+                LlmResponse(
+                    content = """{"groundednessScore":0.92,"reason":"取得根拠に沿っています。"}""",
+                    model = "gpt-4o-mini",
+                    promptTokens = 30,
+                    completionTokens = 20
+                )
+            )
     }
 
     private fun httpBasic(username: String, @Suppress("UNUSED_PARAMETER") password: String): RequestPostProcessor {
