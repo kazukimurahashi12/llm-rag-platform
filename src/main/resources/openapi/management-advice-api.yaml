@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Management Advice API
   description: |-
-    Management Support AI "ONBOARD-Core" のマネジメント支援API。
+    Management Support AI "ONBOARD Guide API" のマネジメント支援API。
     単なるチャットUIではなく、エンタープライズ実運用を前提に、
     高精度（RAG）、高信頼（ガードレール）、高透明性（コスト・監査）を備えた
     マネジメント支援AIバックエンドとして利用する。
@@ -42,7 +42,7 @@ paths:
       operationId: getAdvice
       summary: マネジメントアドバイスを生成する
       description: |-
-        ONBOARD-Core の中核API。
+        ONBOARD Guide API の中核API。
         マネージャーの相談内容に対し、社内ガイドラインや運用ポリシーに沿った
         実践的なアドバイスを生成することを目的とする。
         今後の RAG、PII 保護、監査ログ、コスト可視化の導入を前提とした契約とする。

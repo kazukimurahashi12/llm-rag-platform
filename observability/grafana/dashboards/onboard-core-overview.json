@@ -518,7 +518,7 @@
   "refresh": "10s",
   "schemaVersion": 40,
   "tags": [
-    "onboard-core",
+    "onboard-guide-api",
     "rag",
     "llm"
   ],
@@ -531,8 +531,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "ONBOARD-Core Overview",
-  "uid": "onboard-core-overview",
+  "title": "ONBOARD Guide API Overview",
+  "uid": "onboard-guide-api-overview",
   "version": 1,
   "weekStart": ""
 }

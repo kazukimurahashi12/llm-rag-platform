@@ -1,5 +1,5 @@
-const AUTH_STORAGE_KEY = "onboard-core-auth-session";
-export const AUTH_CHANGED_EVENT = "onboard-core-auth-changed";
+const AUTH_STORAGE_KEY = "onboard-guide-api-auth-session";
+export const AUTH_CHANGED_EVENT = "onboard-guide-api-auth-changed";
 
 export interface StoredAuthSession {
   username: string;

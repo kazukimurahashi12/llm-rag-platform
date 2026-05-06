@@ -1,11 +1,11 @@
-# ONBOARD AI
+# ONBOARD Guide API
 
-Management Support AI "ONBOARD-Core"
+Management Support AI "ONBOARD Guide API"
 
 
-ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して設計した、
-マネジメント支援 AI バックエンドの MVP 兼ポートフォリオです。
-単なるチャット UI ではなく、高精度（RAG）、高信頼（ガードレール）、高透明性（コスト・監査） を備えた、実運用可能な API 基盤を目指しています。
+ONBOARD Guide API は、ONBOARD AI プロダクトへの組み込みを想定して設計した、
+マネジメント支援 AI バックエンドの ポートフォリオです。
+単なるチャット UI ではなく、RAG、ガードレール、コスト・監査 を備えた、実運用可能な API 基盤を目指しています。
 
 ## 目的
 
@@ -20,10 +20,10 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 
 ## コンセプト
 
-- 高精度: 社内ガイドラインやマネジメント知識を RAG で参照する
-- 高信頼: PII マスキング、プロンプトインジェクション対策、入力検証を組み込む
-- 高透明性: token、cost、latency、audit log を記録し、運用判断につなげる
-- ドメイン適合: ACE モデル（Ability / Culture / Expectation）で相談とナレッジを構造化する
+- 社内ガイドラインやマネジメント知識を RAG で参照する
+- PII マスキング、プロンプトインジェクション対策、入力検証を組み込む
+- token、cost、latency、audit log を記録し、運用判断につなげる
+- ACE モデル（Ability / Culture / Expectation）で相談とナレッジを構造化する
 
 
 ## 画面
@@ -66,6 +66,7 @@ ONBOARD-Core は、ONBOARD AI プロダクトへの組み込みを想定して�
 - query を ACE 分類し、同カテゴリ文書を retrieval で軽く優先する boost を実装
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
 - Micrometer / Prometheus 向けに再インデックスジョブのメトリクスを公開
+- 今後の実装予定として、冪等キー（Idempotency-Key）とサーキットブレイカーの導入を検討
 
 ## 技術スタック
 
@@ -275,7 +276,7 @@ compose で使う既定値:
 
 Flyway migration は backend 起動時に適用されます。
 Prometheus は backend の `/actuator/prometheus` を scrape します。
-Grafana は Prometheus datasource と `ONBOARD-Core Overview` dashboard を自動 provisioning します。
+Grafana は Prometheus datasource と `ONBOARD Guide API Overview` dashboard を自動 provisioning します。
 
 初回確認:
 
@@ -658,7 +659,7 @@ open http://localhost:3000
 Grafana には以下が自動で作成されます。
 
 - datasource: `Prometheus`
-- dashboard: `ONBOARD-Core Overview`
+- dashboard: `ONBOARD Guide API Overview`
 
 dashboard では以下を確認できます。
 
