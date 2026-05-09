@@ -52,9 +52,9 @@ class PromptInjectionEvaluationServiceTest {
 
         val result = service.evaluateDefaultCases()
 
-        assertEquals(8, result.totalCases)
-        assertEquals(4, result.expectedBlockedCases)
-        assertEquals(4, result.expectedAllowedCases)
+        assertEquals(17, result.totalCases)
+        assertEquals(9, result.expectedBlockedCases)
+        assertEquals(8, result.expectedAllowedCases)
         assertEquals(1.0, result.detectionRate)
         assertEquals(0.0, result.falsePositiveRate)
         assertEquals(1.0, result.accuracy)

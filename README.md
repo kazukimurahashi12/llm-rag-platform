@@ -71,6 +71,7 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - groundedness が低い場合は、断定的な回答を返さず保守的な fallback 応答へ切り替える
 - groundedness を audit log と dashboard に保存・集計する
 - retrieval / prompt injection / groundedness の標準評価ケースを持ち、評価 API で回帰確認できる
+- prompt injection guard は日本語パターン追加と正規化強化まで実装済みで、単語単独の文脈判定やスコアリングは今後の改善項目
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
 - Micrometer / Prometheus 向けに再インデックスジョブのメトリクスを公開
 - 今後の実装予定として、冪等キー（Idempotency-Key）とサーキットブレイカーの導入を検討（拡張予定）

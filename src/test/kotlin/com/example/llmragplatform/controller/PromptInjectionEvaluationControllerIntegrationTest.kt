@@ -89,9 +89,9 @@ class PromptInjectionEvaluationControllerIntegrationTest {
                 .accept(MediaType.APPLICATION_JSON)
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.totalCases").value(8))
-            .andExpect(jsonPath("$.expectedBlockedCases").value(4))
-            .andExpect(jsonPath("$.expectedAllowedCases").value(4))
+            .andExpect(jsonPath("$.totalCases").value(17))
+            .andExpect(jsonPath("$.expectedBlockedCases").value(9))
+            .andExpect(jsonPath("$.expectedAllowedCases").value(8))
     }
 
     @Test
