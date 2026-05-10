@@ -163,7 +163,7 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - `GET /v1/prompt-injection-evaluations/default`
 - `GET /v1/groundedness-evaluations/default`
 
-`src/main/resources/evaluation/groundedness-cases.json` では、取得根拠に沿った回答と、根拠不足で fallback すべき回答を混在させて評価できます。
+`backend/src/main/resources/evaluation/groundedness-cases.json` では、取得根拠に沿った回答と、根拠不足で fallback すべき回答を混在させて評価できます。
 
 Knowledge 文書は `aceCategory` を持ちます。
 
@@ -348,6 +348,7 @@ docker compose up -d postgres
 backend をローカル起動:
 
 ```bash
+cd backend
 OPENAI_API_KEY=your_api_key ./gradlew bootRun
 ```
 
@@ -397,13 +398,13 @@ make auth-admin
 backend のコンパイル:
 
 ```bash
-./gradlew compileKotlin
+cd backend && ./gradlew compileKotlin
 ```
 
 backend のテスト:
 
 ```bash
-./gradlew test
+cd backend && ./gradlew test
 ```
 
 frontend のビルド:
