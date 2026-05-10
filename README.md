@@ -61,6 +61,7 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - OpenAPI Generator により API interface / model を自動生成
 - Spring Boot 3.x + Kotlin で実装
 - OpenAI Responses API を呼び出して助言を生成
+- OpenAI 呼び出し層に timeout / retry / circuit breaker を入れ、一時障害時は fail-fast で明確なエラーを返す
 - usage 情報として model / token / estimated cost を返却
 - バリデーションエラーおよび外部 API エラーのハンドリングを実装
 - PostgreSQL + pgvector による vector 検索を実装
@@ -74,7 +75,7 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - prompt injection guard は日本語パターン追加と正規化強化まで実装済みで、単語単独の文脈判定やスコアリングは今後の改善項目
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
 - Micrometer / Prometheus 向けに再インデックスジョブのメトリクスを公開
-- 今後の実装予定として、冪等キー（Idempotency-Key）とサーキットブレイカーの導入を検討（拡張予定）
+- 今後の実装予定として、冪等キー（Idempotency-Key）の導入を検討（拡張予定）
 
 ## 技術スタック
 

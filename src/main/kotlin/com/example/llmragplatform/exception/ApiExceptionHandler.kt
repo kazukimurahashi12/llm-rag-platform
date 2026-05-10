@@ -55,6 +55,16 @@ class ApiExceptionHandler {
         )
     }
 
+    @ExceptionHandler(OpenAiTemporarilyUnavailableException::class)
+    fun handleOpenAiTemporarilyUnavailableException(ex: OpenAiTemporarilyUnavailableException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
+            ErrorResponse()
+                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
+                .message(ex.message)
+                .details(ex.details)
+        )
+    }
+
     @ExceptionHandler(PromptInjectionDetectedException::class)
     fun handlePromptInjectionDetectedException(ex: PromptInjectionDetectedException): ResponseEntity<ErrorResponse> {
         return ResponseEntity.badRequest().body(

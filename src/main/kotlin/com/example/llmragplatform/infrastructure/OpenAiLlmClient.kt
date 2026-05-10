@@ -10,38 +10,41 @@ import org.springframework.web.client.RestClient
 @Component
 class OpenAiLlmClient(
     private val openAiRestClient: RestClient,
+    private val openAiResilienceService: OpenAiResilienceService,
 ) : LlmClient {
 
     override fun chat(model: String, systemPrompt: String, userMessage: String): LlmResponse {
-        val payload = mapOf(
-            "model" to model,
-            "instructions" to systemPrompt,
-            "input" to listOf(
-                mapOf(
-                    "role" to "user",
-                    "content" to listOf(
-                        mapOf(
-                            "type" to "input_text",
-                            "text" to userMessage
+        return openAiResilienceService.execute("chat") {
+            val payload = mapOf(
+                "model" to model,
+                "instructions" to systemPrompt,
+                "input" to listOf(
+                    mapOf(
+                        "role" to "user",
+                        "content" to listOf(
+                            mapOf(
+                                "type" to "input_text",
+                                "text" to userMessage
+                            )
                         )
                     )
                 )
             )
-        )
 
-        val response = openAiRestClient.post()
-            .uri("/responses")
-            .body(payload)
-            .retrieve()
-            .body(JsonNode::class.java)
-            ?: throw OpenAiIntegrationException("Empty response returned from OpenAI")
+            val response = openAiRestClient.post()
+                .uri("/responses")
+                .body(payload)
+                .retrieve()
+                .body(JsonNode::class.java)
+                ?: throw OpenAiIntegrationException("Empty response returned from OpenAI")
 
-        return LlmResponse(
-            content = extractContent(response),
-            model = model,
-            promptTokens = response.path("usage").path("input_tokens").asInt(0),
-            completionTokens = response.path("usage").path("output_tokens").asInt(0)
-        )
+            LlmResponse(
+                content = extractContent(response),
+                model = model,
+                promptTokens = response.path("usage").path("input_tokens").asInt(0),
+                completionTokens = response.path("usage").path("output_tokens").asInt(0)
+            )
+        }
     }
 
     private fun extractContent(response: JsonNode): String {

@@ -11,26 +11,29 @@ import org.springframework.web.client.RestClient
 class OpenAiEmbeddingClient(
     private val openAiRestClient: RestClient,
     private val ragProperties: RagProperties,
+    private val openAiResilienceService: OpenAiResilienceService,
 ) : EmbeddingClient {
 
     override fun embed(input: String): List<Float> {
-        val response = openAiRestClient.post()
-            .uri("/embeddings")
-            .body(
-                mapOf(
-                    "model" to ragProperties.embeddingModel,
-                    "input" to input
+        return openAiResilienceService.execute("embedding") {
+            val response = openAiRestClient.post()
+                .uri("/embeddings")
+                .body(
+                    mapOf(
+                        "model" to ragProperties.embeddingModel,
+                        "input" to input
+                    )
                 )
-            )
-            .retrieve()
-            .body(JsonNode::class.java)
-            ?: throw OpenAiIntegrationException("Empty embedding response returned from OpenAI")
+                .retrieve()
+                .body(JsonNode::class.java)
+                ?: throw OpenAiIntegrationException("Empty embedding response returned from OpenAI")
 
-        val embeddingNode = response.path("data").path(0).path("embedding")
-        if (!embeddingNode.isArray || embeddingNode.isEmpty) {
-            throw OpenAiIntegrationException("OpenAI embedding response did not contain vector data")
+            val embeddingNode = response.path("data").path(0).path("embedding")
+            if (!embeddingNode.isArray || embeddingNode.isEmpty) {
+                throw OpenAiIntegrationException("OpenAI embedding response did not contain vector data")
+            }
+
+            embeddingNode.map { it.floatValue() }
         }
-
-        return embeddingNode.map { it.floatValue() }
     }
 }
