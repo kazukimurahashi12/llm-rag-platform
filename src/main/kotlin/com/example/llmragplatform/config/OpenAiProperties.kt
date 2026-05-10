@@ -6,8 +6,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class OpenAiProperties(
     val apiKey: String,
     val defaultModel: String,
+    val timeout: Timeout = Timeout(),
     val pricing: Pricing = Pricing(),
 ) {
+    data class Timeout(
+        val connectSeconds: Long = 3,
+        val readSeconds: Long = 20,
+    )
+
     data class Pricing(
         val usdToJpy: Double = 150.0,
         val models: Map<String, ModelRate> = defaultRates(),

@@ -16,6 +16,9 @@ spring:
 openai:
   api-key: ${OPENAI_API_KEY}
   default-model: gpt-4o-mini
+  timeout:
+    connect-seconds: ${OPENAI_CONNECT_TIMEOUT_SECONDS:3}
+    read-seconds: ${OPENAI_READ_TIMEOUT_SECONDS:20}
   pricing:
     usd-to-jpy: 150.0
     models:
@@ -64,3 +67,27 @@ management:
     web:
       exposure:
         include: health,prometheus,metrics
+
+resilience4j:
+  retry:
+    instances:
+      openai:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2.0
+        exponential-max-wait-duration: 3s
+        enable-randomized-wait: true
+        randomized-wait-factor: 0.5
+        retry-exceptions:
+          - com.example.llmragplatform.exception.OpenAiTemporarilyUnavailableException
+  circuitbreaker:
+    instances:
+      openai:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
