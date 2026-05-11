@@ -19,8 +19,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: onboard-backend
     restart: unless-stopped
     depends_on:

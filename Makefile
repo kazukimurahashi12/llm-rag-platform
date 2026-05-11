@@ -81,7 +81,7 @@ test: test-backend build-frontend
 
 # backend のテストを実行
 test-backend:
-	./gradlew test
+	cd backend && ./gradlew test
 
 # frontend の build を実行
 build: build-frontend
@@ -92,7 +92,7 @@ build-frontend:
 
 # backend をローカルプロセスとして起動
 backend-local: check-openai
-	set -a && source .env && set +a && RAG_VECTOR_SEARCH_ENABLED=$${RAG_VECTOR_SEARCH_ENABLED:-true} ./gradlew bootRun
+	set -a && source .env && set +a && cd backend && RAG_VECTOR_SEARCH_ENABLED=$${RAG_VECTOR_SEARCH_ENABLED:-true} ./gradlew bootRun
 
 # frontend をローカル開発サーバーで起動
 frontend-local:
