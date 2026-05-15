@@ -42,6 +42,18 @@ services:
     ports:
       - "8080:8080"
 
+  backend-go:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile
+    container_name: onboard-backend-go
+    restart: unless-stopped
+    environment:
+      APP_ENV: compose
+      PORT: 8081
+    ports:
+      - "8081:8081"
+
   frontend:
     build:
       context: ./frontend
