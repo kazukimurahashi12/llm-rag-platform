@@ -229,9 +229,13 @@ Knowledge 文書は `aceCategory` を持ちます。
 
 - `postgres`
 - `backend`
+- `backend-go`
 - `frontend`
 - `prometheus`
 - `grafana`
+
+`backend` は Kotlin / Spring Boot 版を `8080` で、`backend-go` は Go / Echo 版を `8081` で起動できます。
+Go版は並行移行用の雛形です。
 
 このリポジトリを初めて clone して、ローカルで起動できる状態にする最短手順:
 
