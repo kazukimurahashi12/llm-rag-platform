@@ -51,6 +51,13 @@ services:
     environment:
       APP_ENV: compose
       PORT: 8081
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-change-this-jwt-secret-in-production-at-least-32-bytes}
+      APP_JWT_ISSUER: ${APP_JWT_ISSUER:-llm-rag-platform}
+      APP_JWT_EXPIRATION_SECONDS: ${APP_JWT_EXPIRATION_SECONDS:-3600}
+      AUDIT_ADMIN_USERNAME: ${AUDIT_ADMIN_USERNAME:-admin}
+      AUDIT_ADMIN_PASSWORD: ${AUDIT_ADMIN_PASSWORD:-change-me}
+      AUDIT_OPERATOR_USERNAME: ${AUDIT_OPERATOR_USERNAME:-operator}
+      AUDIT_OPERATOR_PASSWORD: ${AUDIT_OPERATOR_PASSWORD:-change-operator}
     ports:
       - "8081:8081"
 

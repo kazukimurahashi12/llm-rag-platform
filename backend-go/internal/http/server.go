@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -13,6 +14,8 @@ const version = "0.1.0"
 // NewServer は Go 版 backend の Echo サーバーを組み立てる。
 func NewServer(cfg config.Config) *echo.Echo {
 	e := echo.New()
+	tokenService := auth.NewTokenService(cfg)
+	authService := auth.NewService(cfg, tokenService)
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())
@@ -20,6 +23,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 	e.Use(middleware.Logger())
 
 	registerRoutes(e, cfg)
+	RegisterAuthRoutes(e, authService, tokenService)
 
 	return e
 }
