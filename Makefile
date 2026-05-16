@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 .PHONY: help bootstrap env frontend-env check-openai install-frontend \
 	up up-build down down-volumes logs ps \
-	postgres backend frontend backend-build frontend-build \
+	postgres backend backend-go frontend backend-build backend-go-build frontend-build \
 	test test-backend build build-frontend \
 	backend-local frontend-local auth-admin auth-operator
 
@@ -64,6 +64,10 @@ postgres:
 backend:
 	docker compose up -d backend
 
+# Go 版 backend コンテナだけを起動
+backend-go:
+	docker compose up -d backend-go
+
 # frontend コンテナだけを起動
 frontend:
 	docker compose up -d frontend
@@ -71,6 +75,10 @@ frontend:
 # backend の Docker イメージを再ビルドして起動
 backend-build: check-openai
 	docker compose up -d --build backend
+
+# Go 版 backend の Docker イメージを再ビルドして起動
+backend-go-build:
+	docker compose up -d --build backend-go
 
 # frontend の Docker イメージを再ビルドして起動
 frontend-build:

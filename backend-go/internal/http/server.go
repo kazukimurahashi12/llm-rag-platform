@@ -24,6 +24,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 
 	registerRoutes(e, cfg)
 	RegisterAuthRoutes(e, authService, tokenService)
+	RegisterAdviceRoutes(e, tokenService)
 
 	return e
 }

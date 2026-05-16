@@ -8,6 +8,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type jwtClaimsParser interface {
+	ParseAndValidate(token string) (*auth.Claims, error)
+}
+
 type authTokenRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -51,7 +55,7 @@ func RegisterAuthRoutes(e *echo.Echo, authService *auth.Service, tokenService *a
 	})
 }
 
-func jwtMiddleware(tokenService *auth.TokenService) echo.MiddlewareFunc {
+func jwtMiddleware(tokenService jwtClaimsParser) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			authorization := c.Request().Header.Get("Authorization")
