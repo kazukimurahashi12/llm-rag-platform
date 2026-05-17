@@ -3,8 +3,10 @@ package http
 import (
 	"net/http"
 
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -16,6 +18,8 @@ func NewServer(cfg config.Config) *echo.Echo {
 	e := echo.New()
 	tokenService := auth.NewTokenService(cfg)
 	authService := auth.NewService(cfg, tokenService)
+	openAIClient := openai.NewClient(cfg.OpenAI)
+	adviceService := advice.NewService(cfg, openAIClient)
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())
@@ -24,7 +28,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 
 	registerRoutes(e, cfg)
 	RegisterAuthRoutes(e, authService, tokenService)
-	RegisterAdviceRoutes(e, tokenService)
+	RegisterAdviceRoutes(e, tokenService, adviceService)
 
 	return e
 }

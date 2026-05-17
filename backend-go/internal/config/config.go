@@ -12,8 +12,17 @@ type Config struct {
 	JWTSecret    string
 	JWTIssuer    string
 	JWTExpiresIn int64
+	OpenAI       OpenAIConfig
 	AdminUser    UserCredential
 	OperatorUser UserCredential
+}
+
+// OpenAIConfig は最小 advice 実装で使う OpenAI 接続設定を保持する。
+type OpenAIConfig struct {
+	APIKey         string
+	BaseURL        string
+	DefaultModel   string
+	TimeoutSeconds int64
 }
 
 // UserCredential は最小認証で使う固定ユーザー設定を保持する。
@@ -31,6 +40,12 @@ func Load() Config {
 		JWTSecret:    getEnv("APP_JWT_SECRET", "change-this-jwt-secret-in-production-at-least-32-bytes"),
 		JWTIssuer:    getEnv("APP_JWT_ISSUER", "llm-rag-platform"),
 		JWTExpiresIn: getEnvInt64("APP_JWT_EXPIRATION_SECONDS", 3600),
+		OpenAI: OpenAIConfig{
+			APIKey:         getEnv("OPENAI_API_KEY", ""),
+			BaseURL:        getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+			DefaultModel:   getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
+			TimeoutSeconds: getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
+		},
 		AdminUser: UserCredential{
 			Username: getEnv("AUDIT_ADMIN_USERNAME", "admin"),
 			Password: getEnv("AUDIT_ADMIN_PASSWORD", "change-me"),

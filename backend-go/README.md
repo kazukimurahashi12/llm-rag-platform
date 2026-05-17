@@ -11,6 +11,7 @@ OpenAPI:
 - `openapi/management-advice-api.yaml` は Kotlin 版 backend の OpenAPI をコピーしたスナップショットです
 - 正本は `backend/src/main/resources/openapi/management-advice-api.yaml` です
 - Kotlin 側の契約を変更した場合は、Go 側スナップショットも同期が必要です
+- generated model を更新するときは `go generate ./internal/api` または root で `make backend-go-codegen` を使います
 
 起動:
 

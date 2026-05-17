@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/labstack/echo/v4"
 )
@@ -12,15 +13,10 @@ type jwtClaimsParser interface {
 	ParseAndValidate(token string) (*auth.Claims, error)
 }
 
-type authTokenRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 // RegisterAuthRoutes は JWT 認証の最小 endpoint を登録する。
 func RegisterAuthRoutes(e *echo.Echo, authService *auth.Service, tokenService *auth.TokenService) {
 	e.POST("/v1/auth/token", func(c echo.Context) error {
-		request := authTokenRequest{}
+		request := api.AuthTokenRequest{}
 		if err := c.Bind(&request); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]any{
 				"status":  http.StatusBadRequest,
@@ -47,9 +43,9 @@ func RegisterAuthRoutes(e *echo.Echo, authService *auth.Service, tokenService *a
 	authGroup.GET("/me", func(c echo.Context) error {
 		claims := c.Get("jwtClaims").(*auth.Claims)
 		return c.JSON(http.StatusOK, map[string]any{
-			"username": claims.Subject,
-			"roles":    claims.Roles,
-			"issuer":   claims.Issuer,
+			"username":  claims.Subject,
+			"roles":     claims.Roles,
+			"issuer":    claims.Issuer,
 			"expiresAt": claims.ExpiresAt,
 		})
 	})

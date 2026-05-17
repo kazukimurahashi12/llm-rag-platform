@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .PHONY: help bootstrap env frontend-env check-openai install-frontend \
 	up up-build down down-volumes logs ps \
 	postgres backend backend-go frontend backend-build backend-go-build frontend-build \
-	test test-backend build build-frontend \
+	test test-backend build build-frontend backend-go-codegen \
 	backend-local frontend-local auth-admin auth-operator
 
 
@@ -79,6 +79,10 @@ backend-build: check-openai
 # Go 版 backend の Docker イメージを再ビルドして起動
 backend-go-build:
 	docker compose up -d --build backend-go
+
+# Go 版 backend の OpenAPI 生成コードを再作成
+backend-go-codegen:
+	cd backend-go && go generate ./internal/api
 
 # frontend の Docker イメージを再ビルドして起動
 frontend-build:
