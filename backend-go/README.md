@@ -7,6 +7,12 @@ Go / Echo 版 backend の並行実装用ディレクトリです。
 - まずは起動基盤、設定、health endpoint から作る
 - 後続で advice、RAG、OpenAI 連携を移植する
 
+OpenAPI:
+- `openapi/management-advice-api.yaml` は Kotlin 版 backend の OpenAPI をコピーしたスナップショットです
+- 正本は `backend/src/main/resources/openapi/management-advice-api.yaml` です
+- Kotlin 側の契約を変更した場合は、Go 側スナップショットも同期が必要です
+- generated model を更新するときは `go generate ./internal/api` または root で `make backend-go-codegen` を使います
+
 起動:
 
 ```bash
@@ -32,3 +38,7 @@ go run ./cmd/server
 - `GET /version`
 - `POST /v1/auth/token`
 - `GET /v1/auth/me`
+- `POST /v1/management/advice`
+
+`POST /v1/management/advice` は現時点では JWT 必須の空実装です。
+レスポンス shape は Kotlin 版に寄せていますが、advice / groundedness / retrievedDocuments はダミー値です。

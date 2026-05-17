@@ -2,8 +2,8 @@ package auth
 
 import (
 	"errors"
-	"time"
 
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
 )
 
@@ -11,15 +11,6 @@ import (
 type Service struct {
 	cfg          config.Config
 	tokenService *TokenService
-}
-
-// AuthTokenResponse は Kotlin 版に近い token 発行レスポンス。
-type AuthTokenResponse struct {
-	AccessToken string    `json:"accessToken"`
-	TokenType   string    `json:"tokenType"`
-	ExpiresAt   time.Time `json:"expiresAt"`
-	Username    string    `json:"username"`
-	Roles       []string  `json:"roles"`
 }
 
 // NewService は認証サービスを生成する。
@@ -31,7 +22,7 @@ func NewService(cfg config.Config, tokenService *TokenService) *Service {
 }
 
 // IssueToken は固定ユーザー情報を使って JWT を発行する。
-func (s *Service) IssueToken(username string, password string) (*AuthTokenResponse, error) {
+func (s *Service) IssueToken(username string, password string) (*api.AuthTokenResponse, error) {
 	user, err := s.findUser(username, password)
 	if err != nil {
 		return nil, err
@@ -42,7 +33,7 @@ func (s *Service) IssueToken(username string, password string) (*AuthTokenRespon
 		return nil, err
 	}
 
-	return &AuthTokenResponse{
+	return &api.AuthTokenResponse{
 		AccessToken: token,
 		TokenType:   "Bearer",
 		ExpiresAt:   expiresAt,
