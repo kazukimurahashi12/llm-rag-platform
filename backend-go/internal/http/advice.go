@@ -1,11 +1,13 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
 	"github.com/labstack/echo/v4"
 )
 
@@ -34,10 +36,29 @@ func RegisterAdviceRoutes(e *echo.Echo, tokenService jwtClaimsParser, adviceServ
 
 		response, err := adviceService.GenerateAdvice(c.Request().Context(), request)
 		if err != nil {
-			return c.JSON(http.StatusBadGateway, map[string]any{
-				"status":  http.StatusBadGateway,
-				"message": err.Error(),
-				"details": []string{},
+			statusCode := http.StatusBadGateway
+			details := []string{}
+
+			var openAIError *openai.Error
+			if errors.As(err, &openAIError) {
+				details = append(details, openAIError.Error())
+
+				switch openAIError.Kind {
+				case openai.ErrorKindConfig:
+					statusCode = http.StatusInternalServerError
+				case openai.ErrorKindTimeout:
+					statusCode = http.StatusGatewayTimeout
+				case openai.ErrorKindTransport, openai.ErrorKindUpstream:
+					statusCode = http.StatusServiceUnavailable
+				}
+			} else {
+				details = append(details, err.Error())
+			}
+
+			return c.JSON(statusCode, map[string]any{
+				"status":  statusCode,
+				"message": "failed to generate advice in backend-go",
+				"details": details,
 			})
 		}
 

@@ -13,6 +13,7 @@ FROM gcr.io/distroless/base-debian12
 WORKDIR /app
 
 COPY --from=builder /app/server /app/server
+COPY --from=builder /app/prompts /app/prompts
 
 EXPOSE 8081
 
