@@ -7,6 +7,7 @@ import (
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/prompt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -19,7 +20,11 @@ func NewServer(cfg config.Config) *echo.Echo {
 	tokenService := auth.NewTokenService(cfg)
 	authService := auth.NewService(cfg, tokenService)
 	openAIClient := openai.NewClient(cfg.OpenAI)
-	adviceService := advice.NewService(cfg, openAIClient)
+	promptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.AdviceTemplatePath)
+	if err != nil {
+		panic(err)
+	}
+	adviceService := advice.NewService(cfg, openAIClient, promptLoader)
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())

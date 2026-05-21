@@ -12,6 +12,7 @@ OpenAPI:
 - 正本は `backend/src/main/resources/openapi/management-advice-api.yaml` です
 - Kotlin 側の契約を変更した場合は、Go 側スナップショットも同期が必要です
 - generated model を更新するときは `go generate ./internal/api` または root で `make backend-go-codegen` を使います
+- advice prompt は `prompts/management-coach-v1.0.txt` に外出ししています
 
 起動:
 
@@ -32,6 +33,7 @@ go run ./cmd/server
 - `AUDIT_ADMIN_PASSWORD`
 - `AUDIT_OPERATOR_USERNAME`
 - `AUDIT_OPERATOR_PASSWORD`
+- `ADVICE_PROMPT_TEMPLATE_PATH`
 
 現在の endpoint:
 - `GET /health`
@@ -40,5 +42,5 @@ go run ./cmd/server
 - `GET /v1/auth/me`
 - `POST /v1/management/advice`
 
-`POST /v1/management/advice` は現時点では JWT 必須の空実装です。
-レスポンス shape は Kotlin 版に寄せていますが、advice / groundedness / retrievedDocuments はダミー値です。
+`POST /v1/management/advice` は現時点では JWT 必須の最小実装です。
+OpenAI 呼び出しは動きますが、RAG / groundedness judge / retrievedDocuments は未移植です。

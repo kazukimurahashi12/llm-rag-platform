@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -69,7 +70,10 @@ func NewClient(cfg config.OpenAIConfig) *Client {
 // Chat は Responses API を呼び出してテキスト応答を返す。
 func (c *Client) Chat(ctx context.Context, model string, instructions string, userMessage string) (*ChatResult, error) {
 	if strings.TrimSpace(c.apiKey) == "" {
-		return nil, fmt.Errorf("openai api key is not configured")
+		return nil, &Error{
+			Kind:    ErrorKindConfig,
+			Message: "openai api key is not configured",
+		}
 	}
 
 	selectedModel := model
@@ -116,27 +120,63 @@ func (c *Client) Chat(ctx context.Context, model string, instructions string, us
 
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, &Error{
+				Kind:    ErrorKindTimeout,
+				Message: "openai request timed out",
+				Cause:   err,
+			}
+		}
+
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return nil, &Error{
+				Kind:    ErrorKindTimeout,
+				Message: "openai request timed out",
+				Cause:   err,
+			}
+		}
+
+		return nil, &Error{
+			Kind:    ErrorKindTransport,
+			Message: "failed to reach openai",
+			Cause:   err,
+		}
 	}
 	defer response.Body.Close()
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, &Error{
+			Kind:    ErrorKindDecode,
+			Message: "failed to read openai response body",
+			Cause:   err,
+		}
 	}
 
 	if response.StatusCode >= 400 {
-		return nil, fmt.Errorf("openai responses api returned status %d: %s", response.StatusCode, string(responseBody))
+		return nil, &Error{
+			Kind:       ErrorKindUpstream,
+			StatusCode: response.StatusCode,
+			Message:    string(responseBody),
+		}
 	}
 
 	parsed := chatResponse{}
 	if err := json.Unmarshal(responseBody, &parsed); err != nil {
-		return nil, err
+		return nil, &Error{
+			Kind:    ErrorKindDecode,
+			Message: "failed to decode openai response body",
+			Cause:   err,
+		}
 	}
 
 	content := extractContent(parsed)
 	if strings.TrimSpace(content) == "" {
-		return nil, fmt.Errorf("openai response did not contain advice text")
+		return nil, &Error{
+			Kind:    ErrorKindResponse,
+			Message: "openai response did not contain advice text",
+		}
 	}
 
 	return &ChatResult{

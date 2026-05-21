@@ -13,6 +13,7 @@ type Config struct {
 	JWTIssuer    string
 	JWTExpiresIn int64
 	OpenAI       OpenAIConfig
+	Prompt       PromptConfig
 	AdminUser    UserCredential
 	OperatorUser UserCredential
 }
@@ -23,6 +24,11 @@ type OpenAIConfig struct {
 	BaseURL        string
 	DefaultModel   string
 	TimeoutSeconds int64
+}
+
+// PromptConfig は prompt テンプレート設定を保持する。
+type PromptConfig struct {
+	AdviceTemplatePath string
 }
 
 // UserCredential は最小認証で使う固定ユーザー設定を保持する。
@@ -45,6 +51,9 @@ func Load() Config {
 			BaseURL:        getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
 			DefaultModel:   getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
 			TimeoutSeconds: getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
+		},
+		Prompt: PromptConfig{
+			AdviceTemplatePath: getEnv("ADVICE_PROMPT_TEMPLATE_PATH", "prompts/management-coach-v1.0.txt"),
 		},
 		AdminUser: UserCredential{
 			Username: getEnv("AUDIT_ADMIN_USERNAME", "admin"),
