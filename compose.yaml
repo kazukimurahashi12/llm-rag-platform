@@ -48,15 +48,29 @@ services:
       dockerfile: Dockerfile
     container_name: onboard-backend-go
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       APP_ENV: compose
       PORT: 8081
       APP_JWT_SECRET: ${APP_JWT_SECRET:-change-this-jwt-secret-in-production-at-least-32-bytes}
       APP_JWT_ISSUER: ${APP_JWT_ISSUER:-llm-rag-platform}
       APP_JWT_EXPIRATION_SECONDS: ${APP_JWT_EXPIRATION_SECONDS:-3600}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: rag_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_SSLMODE: disable
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_DEFAULT_MODEL: ${OPENAI_DEFAULT_MODEL:-gpt-4o-mini}
       OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-20}
+      RAG_TOP_K: ${RAG_TOP_K:-3}
+      RAG_VECTOR_SEARCH_ENABLED: ${RAG_VECTOR_SEARCH_ENABLED:-true}
+      RAG_EMBEDDING_MODEL: ${RAG_EMBEDDING_MODEL:-text-embedding-3-small}
+      RAG_EMBEDDING_DIMENSIONS: ${RAG_EMBEDDING_DIMENSIONS:-1536}
+      RAG_MIN_SIMILARITY_SCORE: ${RAG_MIN_SIMILARITY_SCORE:-0.4}
       ADVICE_PROMPT_TEMPLATE_PATH: /app/prompts/management-coach-v1.0.txt
       AUDIT_ADMIN_USERNAME: ${AUDIT_ADMIN_USERNAME:-admin}
       AUDIT_ADMIN_PASSWORD: ${AUDIT_ADMIN_PASSWORD:-change-me}

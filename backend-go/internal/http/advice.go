@@ -7,6 +7,7 @@ import (
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
 	"github.com/labstack/echo/v4"
 )
@@ -34,7 +35,11 @@ func RegisterAdviceRoutes(e *echo.Echo, tokenService jwtClaimsParser, adviceServ
 			})
 		}
 
-		response, err := adviceService.GenerateAdvice(c.Request().Context(), request)
+		claims := c.Get("jwtClaims").(*auth.Claims)
+		response, err := adviceService.GenerateAdvice(c.Request().Context(), advice.Actor{
+			Username: claims.Subject,
+			Roles:    claims.Roles,
+		}, request)
 		if err != nil {
 			statusCode := http.StatusBadGateway
 			details := []string{}
