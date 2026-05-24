@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -45,6 +46,17 @@ type chatResponse struct {
 		InputTokens  int `json:"input_tokens"`
 		OutputTokens int `json:"output_tokens"`
 	} `json:"usage"`
+}
+
+type embeddingRequest struct {
+	Model string `json:"model"`
+	Input string `json:"input"`
+}
+
+type embeddingResponse struct {
+	Data []struct {
+		Embedding []float64 `json:"embedding"`
+	} `json:"data"`
 }
 
 // ChatResult は advice 生成に必要な最小結果を保持する。
@@ -197,4 +209,78 @@ func extractContent(response chatResponse) string {
 	}
 
 	return response.OutputText
+}
+
+// Embed は Embeddings API を呼び出して query embedding を返す。
+func (c *Client) Embed(ctx context.Context, model string, input string, expectedDimensions int64) ([]float64, error) {
+	if strings.TrimSpace(c.apiKey) == "" {
+		return nil, &Error{
+			Kind:    ErrorKindConfig,
+			Message: "openai api key is not configured",
+		}
+	}
+
+	selectedModel := model
+	if strings.TrimSpace(selectedModel) == "" {
+		selectedModel = "text-embedding-3-small"
+	}
+
+	body, err := json.Marshal(embeddingRequest{
+		Model: selectedModel,
+		Input: input,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/embeddings", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", "Bearer "+c.apiKey)
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, &Error{Kind: ErrorKindTimeout, Message: "openai embedding request timed out", Cause: err}
+		}
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return nil, &Error{Kind: ErrorKindTimeout, Message: "openai embedding request timed out", Cause: err}
+		}
+		return nil, &Error{Kind: ErrorKindTransport, Message: "failed to reach openai embeddings api", Cause: err}
+	}
+	defer response.Body.Close()
+
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, &Error{Kind: ErrorKindDecode, Message: "failed to read openai embedding response body", Cause: err}
+	}
+
+	if response.StatusCode >= 400 {
+		return nil, &Error{
+			Kind:       ErrorKindUpstream,
+			StatusCode: response.StatusCode,
+			Message:    string(responseBody),
+		}
+	}
+
+	parsed := embeddingResponse{}
+	if err := json.Unmarshal(responseBody, &parsed); err != nil {
+		return nil, &Error{Kind: ErrorKindDecode, Message: "failed to decode openai embedding response body", Cause: err}
+	}
+
+	if len(parsed.Data) == 0 || len(parsed.Data[0].Embedding) == 0 {
+		return nil, &Error{Kind: ErrorKindResponse, Message: "openai embedding response did not contain embedding vector"}
+	}
+
+	if expectedDimensions > 0 && int64(len(parsed.Data[0].Embedding)) != expectedDimensions {
+		return nil, &Error{
+			Kind:    ErrorKindResponse,
+			Message: fmt.Sprintf("unexpected embedding dimension: expected %d but got %d", expectedDimensions, len(parsed.Data[0].Embedding)),
+		}
+	}
+
+	return parsed.Data[0].Embedding, nil
 }

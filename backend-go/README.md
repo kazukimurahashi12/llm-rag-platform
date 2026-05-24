@@ -29,6 +29,12 @@ go run ./cmd/server
 - `PORT`
 - `APP_JWT_SECRET`
 - `APP_JWT_EXPIRATION_SECONDS`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `DB_SSLMODE`
 - `AUDIT_ADMIN_USERNAME`
 - `AUDIT_ADMIN_PASSWORD`
 - `AUDIT_OPERATOR_USERNAME`
@@ -41,6 +47,8 @@ go run ./cmd/server
 - `POST /v1/auth/token`
 - `GET /v1/auth/me`
 - `POST /v1/management/advice`
+
+`GET /health` は PostgreSQL 疎通も確認し、`db` フィールドに `UP / DOWN` を返します。
 
 `POST /v1/management/advice` は現時点では JWT 必須の最小実装です。
 OpenAI 呼び出しは動きますが、RAG / groundedness judge / retrievedDocuments は未移植です。
