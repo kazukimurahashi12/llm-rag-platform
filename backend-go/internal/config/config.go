@@ -40,16 +40,20 @@ type OpenAIConfig struct {
 
 // RAGConfig は Go 版 retrieval の最小設定を保持する。
 type RAGConfig struct {
-	TopK                int64
-	VectorSearchEnabled bool
-	EmbeddingModel      string
-	EmbeddingDimensions int64
-	MinSimilarityScore  float64
+	TopK                               int64
+	VectorSearchEnabled                bool
+	EmbeddingModel                     string
+	EmbeddingDimensions                int64
+	MinSimilarityScore                 float64
+	GroundednessThreshold              float64
+	GroundednessFallbackEnabled        bool
+	GroundednessFallbackScoreThreshold float64
 }
 
 // PromptConfig は prompt テンプレート設定を保持する。
 type PromptConfig struct {
-	AdviceTemplatePath string
+	AdviceTemplatePath       string
+	GroundednessTemplatePath string
 }
 
 // UserCredential は最小認証で使う固定ユーザー設定を保持する。
@@ -82,14 +86,18 @@ func Load() Config {
 			TimeoutSeconds: getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
 		},
 		RAG: RAGConfig{
-			TopK:                getEnvInt64("RAG_TOP_K", 3),
-			VectorSearchEnabled: getEnvBool("RAG_VECTOR_SEARCH_ENABLED", true),
-			EmbeddingModel:      getEnv("RAG_EMBEDDING_MODEL", "text-embedding-3-small"),
-			EmbeddingDimensions: getEnvInt64("RAG_EMBEDDING_DIMENSIONS", 1536),
-			MinSimilarityScore:  getEnvFloat64("RAG_MIN_SIMILARITY_SCORE", 0.4),
+			TopK:                               getEnvInt64("RAG_TOP_K", 3),
+			VectorSearchEnabled:                getEnvBool("RAG_VECTOR_SEARCH_ENABLED", true),
+			EmbeddingModel:                     getEnv("RAG_EMBEDDING_MODEL", "text-embedding-3-small"),
+			EmbeddingDimensions:                getEnvInt64("RAG_EMBEDDING_DIMENSIONS", 1536),
+			MinSimilarityScore:                 getEnvFloat64("RAG_MIN_SIMILARITY_SCORE", 0.4),
+			GroundednessThreshold:              getEnvFloat64("RAG_GROUNDEDNESS_THRESHOLD", 0.7),
+			GroundednessFallbackEnabled:        getEnvBool("RAG_GROUNDEDNESS_FALLBACK_ENABLED", true),
+			GroundednessFallbackScoreThreshold: getEnvFloat64("RAG_GROUNDEDNESS_FALLBACK_SCORE_THRESHOLD", 0.3),
 		},
 		Prompt: PromptConfig{
-			AdviceTemplatePath: getEnv("ADVICE_PROMPT_TEMPLATE_PATH", "prompts/management-coach-v1.0.txt"),
+			AdviceTemplatePath:       getEnv("ADVICE_PROMPT_TEMPLATE_PATH", "prompts/management-coach-v1.0.txt"),
+			GroundednessTemplatePath: getEnv("GROUNDEDNESS_PROMPT_TEMPLATE_PATH", "prompts/groundedness-judge-v1.0.txt"),
 		},
 		AdminUser: UserCredential{
 			Username: getEnv("AUDIT_ADMIN_USERNAME", "admin"),

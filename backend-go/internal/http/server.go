@@ -10,6 +10,7 @@ import (
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/db"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/guard"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/knowledge"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/prompt"
@@ -31,11 +32,16 @@ func NewServer(cfg config.Config) *echo.Echo {
 	}
 	knowledgeRepository := knowledge.NewRepository(postgres.SQLDB())
 	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient)
+	promptInjectionGuardService := guard.NewPromptInjectionGuardService()
 	promptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.AdviceTemplatePath)
 	if err != nil {
 		panic(err)
 	}
-	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader)
+	groundednessPromptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.GroundednessTemplatePath)
+	if err != nil {
+		panic(err)
+	}
+	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader, groundednessPromptLoader)
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())
@@ -44,7 +50,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 
 	registerRoutes(e, cfg, postgres)
 	RegisterAuthRoutes(e, authService, tokenService)
-	RegisterAdviceRoutes(e, tokenService, adviceService)
+	RegisterAdviceRoutes(e, tokenService, adviceService, promptInjectionGuardService)
 
 	return e
 }

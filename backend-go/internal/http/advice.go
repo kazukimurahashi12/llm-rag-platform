@@ -8,12 +8,18 @@ import (
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/guard"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
 	"github.com/labstack/echo/v4"
 )
 
 // RegisterAdviceRoutes は Go 版 advice API の空実装を登録する。
-func RegisterAdviceRoutes(e *echo.Echo, tokenService jwtClaimsParser, adviceService *advice.Service) {
+func RegisterAdviceRoutes(
+	e *echo.Echo,
+	tokenService jwtClaimsParser,
+	adviceService *advice.Service,
+	promptInjectionGuardService *guard.PromptInjectionGuardService,
+) {
 	adviceGroup := e.Group("/v1/management")
 	adviceGroup.Use(jwtMiddleware(tokenService))
 
@@ -31,6 +37,13 @@ func RegisterAdviceRoutes(e *echo.Echo, tokenService jwtClaimsParser, adviceServ
 			return c.JSON(http.StatusBadRequest, map[string]any{
 				"status":  http.StatusBadRequest,
 				"message": "memberContext.situation and memberContext.targetGoal are required",
+				"details": []string{},
+			})
+		}
+		if err := promptInjectionGuardService.ValidateUserInput(request.MemberContext.Situation, request.MemberContext.TargetGoal); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]any{
+				"status":  http.StatusBadRequest,
+				"message": err.Error(),
 				"details": []string{},
 			})
 		}

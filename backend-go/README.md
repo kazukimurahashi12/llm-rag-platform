@@ -49,6 +49,7 @@ go run ./cmd/server
 - `POST /v1/management/advice`
 
 `GET /health` は PostgreSQL 疎通も確認し、`db` フィールドに `UP / DOWN` を返します。
+`POST /v1/management/advice` には最小の prompt injection guard を入れており、日本語/英語の典型パターンと表記揺れ正規化で危険入力を block します。
 
 `POST /v1/management/advice` は現時点では JWT 必須の最小実装です。
 OpenAI 呼び出しは動きますが、RAG / groundedness judge / retrievedDocuments は未移植です。

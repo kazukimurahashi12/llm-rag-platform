@@ -20,10 +20,11 @@ type Actor struct {
 
 // Service は Go 版 advice API の最小業務ロジックを担当する。
 type Service struct {
-	cfg          config.Config
-	retrieval    *knowledge.RetrievalService
-	openAIClient *openai.Client
-	promptLoader *prompt.TemplateLoader
+	cfg                      config.Config
+	retrieval                *knowledge.RetrievalService
+	openAIClient             *openai.Client
+	promptLoader             *prompt.TemplateLoader
+	groundednessPromptLoader *prompt.TemplateLoader
 }
 
 // NewService は advice service を生成する。
@@ -32,12 +33,14 @@ func NewService(
 	retrieval *knowledge.RetrievalService,
 	openAIClient *openai.Client,
 	promptLoader *prompt.TemplateLoader,
+	groundednessPromptLoader *prompt.TemplateLoader,
 ) *Service {
 	return &Service{
-		cfg:          cfg,
-		retrieval:    retrieval,
-		openAIClient: openAIClient,
-		promptLoader: promptLoader,
+		cfg:                      cfg,
+		retrieval:                retrieval,
+		openAIClient:             openAIClient,
+		promptLoader:             promptLoader,
+		groundednessPromptLoader: groundednessPromptLoader,
 	}
 }
 
@@ -80,18 +83,25 @@ func (s *Service) GenerateAdvice(ctx context.Context, actor Actor, request api.A
 		return nil, err
 	}
 
+	groundednessEvaluation, finalAdvice := evaluateGroundedness(
+		ctx,
+		s.cfg.RAG,
+		s.openAIClient,
+		s.groundednessPromptLoader,
+		model,
+		request.MemberContext.Situation,
+		request.MemberContext.TargetGoal,
+		result.Content,
+		retrievedKnowledge.Documents,
+	)
+
 	return &api.AdviceResponse{
-		Advice: result.Content,
+		Advice: finalAdvice,
 		AceAnalysis: api.AceAnalysis{
 			PrimaryCategory: aceAnalysis.PrimaryCategory,
 			Reason:          aceAnalysis.Reason,
 		},
-		GroundednessEvaluation: api.GroundednessEvaluation{
-			GroundednessScore: 0,
-			Reason:            "Go 版では groundedness judge は未移植のため、暫定値です。",
-			Status:            api.GroundednessEvaluationStatusNOEVIDENCE,
-			FallbackApplied:   false,
-		},
+		GroundednessEvaluation: groundednessEvaluation,
 		Usage: api.UsageInfo{
 			Model:            result.Model,
 			PromptTokens:     result.PromptTokens,
