@@ -78,3 +78,35 @@ func jwtMiddleware(tokenService jwtClaimsParser) echo.MiddlewareFunc {
 		}
 	}
 }
+
+func adminMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			claims, ok := c.Get("jwtClaims").(*auth.Claims)
+			if !ok || claims == nil {
+				return c.JSON(http.StatusUnauthorized, map[string]any{
+					"status":  http.StatusUnauthorized,
+					"message": "missing authenticated user",
+					"details": []string{},
+				})
+			}
+			if !hasRole(claims.Roles, "ADMIN") {
+				return c.JSON(http.StatusForbidden, map[string]any{
+					"status":  http.StatusForbidden,
+					"message": "admin role is required",
+					"details": []string{},
+				})
+			}
+			return next(c)
+		}
+	}
+}
+
+func hasRole(roles []string, target string) bool {
+	for _, role := range roles {
+		if role == target {
+			return true
+		}
+	}
+	return false
+}

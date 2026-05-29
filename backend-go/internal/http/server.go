@@ -10,6 +10,7 @@ import (
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/db"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/evaluation"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/guard"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/knowledge"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
@@ -42,6 +43,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 		panic(err)
 	}
 	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader, groundednessPromptLoader)
+	promptInjectionEvaluationService := evaluation.NewPromptInjectionEvaluationService(promptInjectionGuardService)
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())
@@ -51,6 +53,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 	registerRoutes(e, cfg, postgres)
 	RegisterAuthRoutes(e, authService, tokenService)
 	RegisterAdviceRoutes(e, tokenService, adviceService, promptInjectionGuardService)
+	RegisterEvaluationRoutes(e, tokenService, promptInjectionEvaluationService)
 
 	return e
 }
