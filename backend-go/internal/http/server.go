@@ -39,7 +39,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient)
 	knowledgeManagementService := knowledge.NewManagementService(knowledgeRepository, cfg.RAG, openAIClient)
 	reindexJobService := knowledge.NewReindexJobService(knowledgeManagementService)
-	dashboardService := dashboard.NewService(postgres.SQLDB(), auditRepository, reindexJobService)
+	dashboardService := dashboard.NewService(postgres.SQLDB(), auditRepository, reindexJobService, openAIClient)
 	promptInjectionGuardService := guard.NewPromptInjectionGuardService()
 	promptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.AdviceTemplatePath)
 	if err != nil {
@@ -50,6 +50,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 		panic(err)
 	}
 	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader, groundednessPromptLoader, auditService)
+	retrievalEvaluationService := evaluation.NewRetrievalEvaluationService(retrievalService)
 	promptInjectionEvaluationService := evaluation.NewPromptInjectionEvaluationService(promptInjectionGuardService)
 	groundednessCaseEvaluationService := evaluation.NewGroundednessCaseEvaluationService(
 		cfg.RAG,
@@ -70,7 +71,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 	RegisterReindexRoutes(e, tokenService, reindexJobService)
 	RegisterAuditRoutes(e, tokenService, auditService)
 	RegisterDashboardRoutes(e, tokenService, dashboardService)
-	RegisterEvaluationRoutes(e, tokenService, promptInjectionEvaluationService, groundednessCaseEvaluationService)
+	RegisterEvaluationRoutes(e, tokenService, retrievalEvaluationService, promptInjectionEvaluationService, groundednessCaseEvaluationService)
 
 	return e
 }

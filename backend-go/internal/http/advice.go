@@ -66,7 +66,7 @@ func RegisterAdviceRoutes(
 					statusCode = http.StatusInternalServerError
 				case openai.ErrorKindTimeout:
 					statusCode = http.StatusGatewayTimeout
-				case openai.ErrorKindTransport, openai.ErrorKindUpstream:
+				case openai.ErrorKindTransport, openai.ErrorKindUpstream, openai.ErrorKindCircuit:
 					statusCode = http.StatusServiceUnavailable
 				}
 			} else {

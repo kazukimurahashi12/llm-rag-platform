@@ -7,6 +7,7 @@ import (
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/audit"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/knowledge"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
 )
 
 // Service は dashboard summary を集計する。
@@ -14,14 +15,16 @@ type Service struct {
 	db              *sql.DB
 	auditRepository *audit.Repository
 	reindexService  *knowledge.ReindexJobService
+	openAIClient    *openai.Client
 }
 
 // NewService は dashboard service を生成する。
-func NewService(db *sql.DB, auditRepository *audit.Repository, reindexService *knowledge.ReindexJobService) *Service {
+func NewService(db *sql.DB, auditRepository *audit.Repository, reindexService *knowledge.ReindexJobService, openAIClient *openai.Client) *Service {
 	return &Service{
 		db:              db,
 		auditRepository: auditRepository,
 		reindexService:  reindexService,
+		openAIClient:    openAIClient,
 	}
 }
 
@@ -76,5 +79,17 @@ func (s *Service) GetSummary(ctx context.Context) (*api.DashboardSummaryResponse
 		reindexStats.ReindexSuccessRate = float64(reindexStats.CompletedReindexJobs) / float64(finishedJobs)
 	}
 
-	return s.auditRepository.BuildDashboardSummary(ctx, reindexStats, knowledgeStats)
+	summary, err := s.auditRepository.BuildDashboardSummary(ctx, reindexStats, knowledgeStats)
+	if err != nil {
+		return nil, err
+	}
+	if s.openAIClient != nil {
+		metrics := s.openAIClient.MetricsSnapshot()
+		summary.OpenAiRetryAttempts = metrics.RetryAttempts
+		summary.OpenAiTimeouts = metrics.Timeouts
+		summary.OpenAiFailFastCount = metrics.FailFastCount
+		summary.OpenAiCircuitOpenTransitions = metrics.CircuitOpenTransitions
+		summary.OpenAiCircuitState = metrics.CircuitState
+	}
+	return summary, nil
 }

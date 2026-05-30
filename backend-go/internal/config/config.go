@@ -32,10 +32,20 @@ type DatabaseConfig struct {
 
 // OpenAIConfig は最小 advice 実装で使う OpenAI 接続設定を保持する。
 type OpenAIConfig struct {
-	APIKey         string
-	BaseURL        string
-	DefaultModel   string
-	TimeoutSeconds int64
+	APIKey                                string
+	BaseURL                               string
+	DefaultModel                          string
+	TimeoutSeconds                        int64
+	ConnectTimeoutSeconds                 int64
+	ReadTimeoutSeconds                    int64
+	RetryMaxAttempts                      int64
+	RetryInitialBackoffMillis             int64
+	RetryMaxBackoffMillis                 int64
+	CircuitBreakerFailureThresholdPercent int64
+	CircuitBreakerMinimumCalls            int64
+	CircuitBreakerWindowSize              int64
+	CircuitBreakerOpenSeconds             int64
+	CircuitBreakerHalfOpenMaxCalls        int64
 }
 
 // RAGConfig は Go 版 retrieval の最小設定を保持する。
@@ -80,10 +90,20 @@ func Load() Config {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		OpenAI: OpenAIConfig{
-			APIKey:         getEnv("OPENAI_API_KEY", ""),
-			BaseURL:        getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-			DefaultModel:   getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
-			TimeoutSeconds: getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
+			APIKey:                                getEnv("OPENAI_API_KEY", ""),
+			BaseURL:                               getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+			DefaultModel:                          getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
+			TimeoutSeconds:                        getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
+			ConnectTimeoutSeconds:                 getEnvInt64("OPENAI_CONNECT_TIMEOUT_SECONDS", 3),
+			ReadTimeoutSeconds:                    getEnvInt64("OPENAI_READ_TIMEOUT_SECONDS", 20),
+			RetryMaxAttempts:                      getEnvInt64("OPENAI_RETRY_MAX_ATTEMPTS", 3),
+			RetryInitialBackoffMillis:             getEnvInt64("OPENAI_RETRY_INITIAL_BACKOFF_MILLIS", 500),
+			RetryMaxBackoffMillis:                 getEnvInt64("OPENAI_RETRY_MAX_BACKOFF_MILLIS", 3000),
+			CircuitBreakerFailureThresholdPercent: getEnvInt64("OPENAI_CIRCUIT_BREAKER_FAILURE_THRESHOLD_PERCENT", 50),
+			CircuitBreakerMinimumCalls:            getEnvInt64("OPENAI_CIRCUIT_BREAKER_MINIMUM_CALLS", 10),
+			CircuitBreakerWindowSize:              getEnvInt64("OPENAI_CIRCUIT_BREAKER_WINDOW_SIZE", 20),
+			CircuitBreakerOpenSeconds:             getEnvInt64("OPENAI_CIRCUIT_BREAKER_OPEN_SECONDS", 30),
+			CircuitBreakerHalfOpenMaxCalls:        getEnvInt64("OPENAI_CIRCUIT_BREAKER_HALF_OPEN_MAX_CALLS", 3),
 		},
 		RAG: RAGConfig{
 			TopK:                               getEnvInt64("RAG_TOP_K", 3),

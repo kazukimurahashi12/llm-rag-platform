@@ -21,6 +21,9 @@ type Client struct {
 	apiKey       string
 	defaultModel string
 	httpClient   *http.Client
+	policy       resiliencePolicy
+	breaker      *circuitBreaker
+	metrics      *metrics
 }
 
 type chatRequest struct {
@@ -69,18 +72,41 @@ type ChatResult struct {
 
 // NewClient は OpenAI 接続設定からクライアントを生成する。
 func NewClient(cfg config.OpenAIConfig) *Client {
+	policy := newResiliencePolicy(cfg)
+	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: time.Duration(cfg.ConnectTimeoutSeconds) * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: time.Duration(cfg.ReadTimeoutSeconds) * time.Second,
+		TLSHandshakeTimeout:   time.Duration(cfg.ConnectTimeoutSeconds) * time.Second,
+	}
 	return &Client{
 		baseURL:      strings.TrimRight(cfg.BaseURL, "/"),
 		apiKey:       cfg.APIKey,
 		defaultModel: cfg.DefaultModel,
 		httpClient: &http.Client{
-			Timeout: time.Duration(cfg.TimeoutSeconds) * time.Second,
+			Timeout:   time.Duration(cfg.TimeoutSeconds) * time.Second,
+			Transport: transport,
 		},
+		policy:  policy,
+		breaker: newCircuitBreaker(policy),
+		metrics: &metrics{},
 	}
+}
+
+// MetricsSnapshot は OpenAI resilience 指標の現在値を返す。
+func (c *Client) MetricsSnapshot() MetricsSnapshot {
+	return c.metrics.snapshot(c.breaker.stateString())
 }
 
 // Chat は Responses API を呼び出してテキスト応答を返す。
 func (c *Client) Chat(ctx context.Context, model string, instructions string, userMessage string) (*ChatResult, error) {
+	return withResilience(ctx, c, "chat", func(callCtx context.Context) (*ChatResult, error) {
+		return c.doChat(callCtx, model, instructions, userMessage)
+	})
+}
+
+func (c *Client) doChat(ctx context.Context, model string, instructions string, userMessage string) (*ChatResult, error) {
 	if strings.TrimSpace(c.apiKey) == "" {
 		return nil, &Error{
 			Kind:    ErrorKindConfig,
@@ -213,6 +239,12 @@ func extractContent(response chatResponse) string {
 
 // Embed は Embeddings API を呼び出して query embedding を返す。
 func (c *Client) Embed(ctx context.Context, model string, input string, expectedDimensions int64) ([]float64, error) {
+	return withResilience(ctx, c, "embed", func(callCtx context.Context) ([]float64, error) {
+		return c.doEmbed(callCtx, model, input, expectedDimensions)
+	})
+}
+
+func (c *Client) doEmbed(ctx context.Context, model string, input string, expectedDimensions int64) ([]float64, error) {
 	if strings.TrimSpace(c.apiKey) == "" {
 		return nil, &Error{
 			Kind:    ErrorKindConfig,

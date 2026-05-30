@@ -12,6 +12,7 @@ const (
 	ErrorKindUpstream  ErrorKind = "UPSTREAM"
 	ErrorKindDecode    ErrorKind = "DECODE"
 	ErrorKindResponse  ErrorKind = "RESPONSE"
+	ErrorKindCircuit   ErrorKind = "CIRCUIT_OPEN"
 )
 
 // Error は OpenAI 呼び出し失敗の詳細を保持する。

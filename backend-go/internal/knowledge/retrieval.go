@@ -25,6 +25,13 @@ type RetrievedKnowledge struct {
 	Documents     []api.RetrievedDocument
 }
 
+// RetrievalOptions は retrieval 評価や比較時の上書き条件を表す。
+type RetrievalOptions struct {
+	TopK               int
+	MinSimilarityScore *float64
+	RerankEnabled      *bool
+}
+
 // NewRetrievalService は retrieval service を生成する。
 func NewRetrievalService(repository *Repository, cfg config.RAGConfig, openAI *openai.Client) *RetrievalService {
 	return &RetrievalService{
@@ -43,12 +50,27 @@ func (s *RetrievalService) Retrieve(
 	isAdmin bool,
 	preferredAceCategory api.AceAnalysisPrimaryCategory,
 ) (*RetrievedKnowledge, error) {
+	return s.RetrieveWithOptions(ctx, query, currentUsername, isAdmin, preferredAceCategory, RetrievalOptions{
+		TopK: topK,
+	})
+}
+
+// RetrieveWithOptions は比較用の上書き条件つき retrieval を実行する。
+func (s *RetrievalService) RetrieveWithOptions(
+	ctx context.Context,
+	query string,
+	currentUsername string,
+	isAdmin bool,
+	preferredAceCategory api.AceAnalysisPrimaryCategory,
+	options RetrievalOptions,
+) (*RetrievedKnowledge, error) {
+	topK := options.TopK
 	if topK <= 0 {
 		topK = int(s.cfg.TopK)
 	}
 
 	if s.cfg.VectorSearchEnabled {
-		vectorResult, err := s.retrieveByVector(ctx, query, topK, currentUsername, isAdmin, preferredAceCategory)
+		vectorResult, err := s.retrieveByVector(ctx, query, topK, currentUsername, isAdmin, preferredAceCategory, options)
 		if err == nil && vectorResult != nil && len(vectorResult.Documents) > 0 {
 			return vectorResult, nil
 		}
@@ -138,6 +160,7 @@ func (s *RetrievalService) retrieveByVector(
 	currentUsername string,
 	isAdmin bool,
 	preferredAceCategory api.AceAnalysisPrimaryCategory,
+	options RetrievalOptions,
 ) (*RetrievedKnowledge, error) {
 	queryEmbedding, err := s.openAI.Embed(ctx, s.cfg.EmbeddingModel, query, s.cfg.EmbeddingDimensions)
 	if err != nil {
@@ -150,11 +173,15 @@ func (s *RetrievalService) retrieveByVector(
 	}
 
 	filteredMatches := make([]VectorMatch, 0, len(matches))
+	minSimilarityScore := s.cfg.MinSimilarityScore
+	if options.MinSimilarityScore != nil {
+		minSimilarityScore = *options.MinSimilarityScore
+	}
 	for _, match := range matches {
 		if !canAccess(match.ChunkRecord, currentUsername, isAdmin) {
 			continue
 		}
-		if match.SimilarityScore < s.cfg.MinSimilarityScore {
+		if match.SimilarityScore < minSimilarityScore {
 			continue
 		}
 		filteredMatches = append(filteredMatches, match)

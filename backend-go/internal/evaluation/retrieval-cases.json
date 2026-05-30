@@ -1,0 +1,98 @@
+{
+  "topK": 3,
+  "cases": [
+    {
+      "label": "weekly-report-delay",
+      "query": "週報の提出が遅れているメンバーに1on1で改善を促したい",
+      "expectedDocumentTitles": [
+        "週報提出遅延が続くメンバーへの対応",
+        "1on1での改善指摘の基本方針"
+      ]
+    },
+    {
+      "label": "reporting-stall-paraphrase",
+      "query": "報告が滞っているメンバーにどう声をかけるべきか",
+      "expectedDocumentTitles": [
+        "報連相が弱いメンバーへの会話例",
+        "週報提出遅延が続くメンバーへの対応"
+      ]
+    },
+    {
+      "label": "one-on-one-feedback-guidance",
+      "query": "1on1で改善点を伝えるときに相手を責めず行動変容を促したい",
+      "expectedDocumentTitles": [
+        "1on1での改善指摘の基本方針",
+        "心理的安全性を損なわないフィードバック"
+      ]
+    },
+    {
+      "label": "one-on-one-follow-up",
+      "query": "1on1で前回のアクションを振り返りたい",
+      "expectedDocumentTitles": [
+        "1on1での改善指摘の基本方針"
+      ]
+    },
+    {
+      "label": "review-expectation-and-motivation",
+      "query": "評価面談で期待値を揃えつつ、モチベーションも下げたくない",
+      "expectedDocumentTitles": [
+        "評価面談で避けるべき伝え方",
+        "心理的安全性を損なわないフィードバック"
+      ]
+    },
+    {
+      "label": "ace-ability-catchup",
+      "query": "業務知識のキャッチアップが遅い新任メンバーをどう支援すべきか",
+      "expectedDocumentTitles": [
+        "新任メンバーのオンボーディングで確認すべき3要素",
+        "入社30日で期待する状態"
+      ]
+    },
+    {
+      "label": "ace-culture-adaptation",
+      "query": "組織文化や暗黙知に馴染めず、Slackでの相談の仕方にも迷っている",
+      "expectedDocumentTitles": [
+        "Slackコミュニケーションの作法",
+        "新任メンバーのオンボーディングで確認すべき3要素"
+      ]
+    },
+    {
+      "label": "ace-expectation-role-ambiguity",
+      "query": "新しく入ったメンバーが自分に何を期待されているか分からず迷っている",
+      "expectedDocumentTitles": [
+        "入社30日で期待する状態",
+        "新任メンバーのオンボーディングで確認すべき3要素"
+      ]
+    },
+    {
+      "label": "noise-resistance-similar-docs",
+      "query": "報連相の質を上げたいが、単に注意するだけではなく具体的な会話例がほしい",
+      "expectedDocumentTitles": [
+        "報連相が弱いメンバーへの会話例",
+        "Slackコミュニケーションの作法"
+      ]
+    },
+    {
+      "label": "psychological-safety-feedback",
+      "query": "相手を萎縮させずに改善フィードバックをしたい",
+      "expectedDocumentTitles": [
+        "心理的安全性を損なわないフィードバック",
+        "1on1での改善指摘の基本方針"
+      ]
+    },
+    {
+      "label": "sensitive-information-handling",
+      "query": "1on1記録や健康情報のような機微情報を含む相談をAIに入れるときの注意点を知りたい",
+      "expectedDocumentTitles": [
+        "機微情報を含む相談の取り扱い"
+      ]
+    },
+    {
+      "label": "harassment-initial-response",
+      "query": "ハラスメントが疑われる相談を受けたとき、マネージャーとして最初に何をすべきか",
+      "expectedDocumentTitles": [
+        "ハラスメント相談の初動対応"
+      ]
+    }
+  ]
+}

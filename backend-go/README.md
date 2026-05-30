@@ -35,6 +35,19 @@ go run ./cmd/server
 - `DB_USERNAME`
 - `DB_PASSWORD`
 - `DB_SSLMODE`
+- `OPENAI_API_KEY`
+- `OPENAI_DEFAULT_MODEL`
+- `OPENAI_TIMEOUT_SECONDS`
+- `OPENAI_CONNECT_TIMEOUT_SECONDS`
+- `OPENAI_READ_TIMEOUT_SECONDS`
+- `OPENAI_RETRY_MAX_ATTEMPTS`
+- `OPENAI_RETRY_INITIAL_BACKOFF_MILLIS`
+- `OPENAI_RETRY_MAX_BACKOFF_MILLIS`
+- `OPENAI_CIRCUIT_BREAKER_FAILURE_THRESHOLD_PERCENT`
+- `OPENAI_CIRCUIT_BREAKER_MINIMUM_CALLS`
+- `OPENAI_CIRCUIT_BREAKER_WINDOW_SIZE`
+- `OPENAI_CIRCUIT_BREAKER_OPEN_SECONDS`
+- `OPENAI_CIRCUIT_BREAKER_HALF_OPEN_MAX_CALLS`
 - `AUDIT_ADMIN_USERNAME`
 - `AUDIT_ADMIN_PASSWORD`
 - `AUDIT_OPERATOR_USERNAME`
@@ -60,17 +73,21 @@ go run ./cmd/server
 - `POST /v1/prompt-injection-evaluations`
 - `GET /v1/groundedness-evaluations/default`
 - `POST /v1/groundedness-evaluations`
+- `GET /v1/retrieval-evaluations/default`
+- `POST /v1/retrieval-evaluations`
+- `POST /v1/retrieval-evaluations/comparisons`
 - `GET /v1/audit-logs`
 - `GET /v1/audit-logs/{auditLogId}`
 - `GET /v1/dashboard/summary`
 
 `GET /health` は PostgreSQL 疎通も確認し、`db` フィールドに `UP / DOWN` を返します。
 `POST /v1/management/advice` には最小の prompt injection guard を入れており、日本語/英語の典型パターンと表記揺れ正規化で危険入力を block します。
+OpenAI 呼び出し層には timeout / retry / circuit breaker を入れており、retry は `TIMEOUT / TRANSPORT / 429 / 502 / 503 / 504` の一時障害だけを対象にします。circuit breaker が OPEN の間は fail-fast で `503` を返します。
 `/v1/knowledge-documents` は Go 側の最小 CRUD として、一覧・登録・更新まで対応しています。登録/更新時は固定長 chunk を再生成し、vector search 有効時は embedding も同期再作成します。
 reindex job は現時点では Go プロセス内メモリで管理しています。API 契約は揃えていますが、Kotlin 側のような永続化 job 管理・cleanup はまだ未移植です。
+`/v1/retrieval-evaluations/*` は ADMIN のみ実行でき、Go 側 retrieval 実装で Hit Rate / MRR / Recall@K / Precision@K を標準ケースまたは任意ケースで集計します。comparison API は `topK / minSimilarityScore / rerankEnabled` を受けますが、現時点の Go 側では `rerankEnabled` は no-op です。
 `/v1/prompt-injection-evaluations/*` は ADMIN のみ実行でき、Go 側 guard の block / allow 精度を標準ケースまたは任意ケースで集計します。
 `/v1/groundedness-evaluations/*` は ADMIN のみ実行でき、groundedness judge と fallback 方針を標準ケースまたは任意ケースで集計します。
 advice 実行時の audit log は Go 側でも `audit_logs` テーブルへ保存します。現時点では Kotlin 側の PII masking は未移植なので、admin/operator で同一内容を返します。
 
-`POST /v1/management/advice` は現時点では JWT 必須の最小実装です。
-OpenAI 呼び出しは動きますが、RAG / groundedness judge / retrievedDocuments は未移植です。
+`POST /v1/management/advice` は現時点では JWT 必須で、OpenAI 呼び出し、RAG retrieval、groundedness judge、retrievedDocuments 返却まで対応しています。
