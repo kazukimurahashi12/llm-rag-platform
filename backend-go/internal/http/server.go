@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/audit"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/dashboard"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/db"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/evaluation"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/guard"
@@ -32,7 +34,12 @@ func NewServer(cfg config.Config) *echo.Echo {
 		panic(err)
 	}
 	knowledgeRepository := knowledge.NewRepository(postgres.SQLDB())
+	auditRepository := audit.NewRepository(postgres.SQLDB())
+	auditService := audit.NewService(auditRepository)
 	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient)
+	knowledgeManagementService := knowledge.NewManagementService(knowledgeRepository, cfg.RAG, openAIClient)
+	reindexJobService := knowledge.NewReindexJobService(knowledgeManagementService)
+	dashboardService := dashboard.NewService(postgres.SQLDB(), auditRepository, reindexJobService)
 	promptInjectionGuardService := guard.NewPromptInjectionGuardService()
 	promptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.AdviceTemplatePath)
 	if err != nil {
@@ -42,8 +49,14 @@ func NewServer(cfg config.Config) *echo.Echo {
 	if err != nil {
 		panic(err)
 	}
-	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader, groundednessPromptLoader)
+	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader, groundednessPromptLoader, auditService)
 	promptInjectionEvaluationService := evaluation.NewPromptInjectionEvaluationService(promptInjectionGuardService)
+	groundednessCaseEvaluationService := evaluation.NewGroundednessCaseEvaluationService(
+		cfg.RAG,
+		openAIClient,
+		groundednessPromptLoader,
+		cfg.OpenAI.DefaultModel,
+	)
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())
@@ -53,7 +66,11 @@ func NewServer(cfg config.Config) *echo.Echo {
 	registerRoutes(e, cfg, postgres)
 	RegisterAuthRoutes(e, authService, tokenService)
 	RegisterAdviceRoutes(e, tokenService, adviceService, promptInjectionGuardService)
-	RegisterEvaluationRoutes(e, tokenService, promptInjectionEvaluationService)
+	RegisterKnowledgeRoutes(e, tokenService, knowledgeManagementService)
+	RegisterReindexRoutes(e, tokenService, reindexJobService)
+	RegisterAuditRoutes(e, tokenService, auditService)
+	RegisterDashboardRoutes(e, tokenService, dashboardService)
+	RegisterEvaluationRoutes(e, tokenService, promptInjectionEvaluationService, groundednessCaseEvaluationService)
 
 	return e
 }

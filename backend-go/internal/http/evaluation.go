@@ -13,6 +13,7 @@ func RegisterEvaluationRoutes(
 	e *echo.Echo,
 	tokenService jwtClaimsParser,
 	promptInjectionEvaluationService *evaluation.PromptInjectionEvaluationService,
+	groundednessCaseEvaluationService *evaluation.GroundednessCaseEvaluationService,
 ) {
 	evaluationGroup := e.Group("/v1/prompt-injection-evaluations")
 	evaluationGroup.Use(jwtMiddleware(tokenService))
@@ -40,5 +41,33 @@ func RegisterEvaluationRoutes(
 			})
 		}
 		return c.JSON(http.StatusOK, promptInjectionEvaluationService.Evaluate(request))
+	})
+
+	groundednessGroup := e.Group("/v1/groundedness-evaluations")
+	groundednessGroup.Use(jwtMiddleware(tokenService))
+	groundednessGroup.Use(adminMiddleware())
+
+	groundednessGroup.GET("/default", func(c echo.Context) error {
+		response, err := groundednessCaseEvaluationService.EvaluateDefaultCases(c.Request().Context())
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]any{
+				"status":  http.StatusInternalServerError,
+				"message": "failed to load default groundedness cases",
+				"details": []string{err.Error()},
+			})
+		}
+		return c.JSON(http.StatusOK, response)
+	})
+
+	groundednessGroup.POST("", func(c echo.Context) error {
+		request := api.GroundednessCaseEvaluationRequest{}
+		if err := c.Bind(&request); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]any{
+				"status":  http.StatusBadRequest,
+				"message": "invalid request body",
+				"details": []string{err.Error()},
+			})
+		}
+		return c.JSON(http.StatusOK, groundednessCaseEvaluationService.Evaluate(c.Request().Context(), request))
 	})
 }
