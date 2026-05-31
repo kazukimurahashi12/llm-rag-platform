@@ -100,10 +100,10 @@ services:
     container_name: onboard-frontend
     restart: unless-stopped
     depends_on:
-      backend:
+      backend-go:
         condition: service_started
     environment:
-      VITE_API_BASE_URL: http://localhost:8080
+      VITE_API_BASE_URL: http://localhost:8081
       VITE_APP_ENV: compose
     ports:
       - "5173:5173"

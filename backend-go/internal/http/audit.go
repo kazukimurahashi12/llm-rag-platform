@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/audit"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/labstack/echo/v4"
 )
 
@@ -48,7 +49,8 @@ func RegisterAuditRoutes(e *echo.Echo, tokenService jwtClaimsParser, auditServic
 				"details": []string{err.Error()},
 			})
 		}
-		response, err := auditService.GetLogDetail(c.Request().Context(), id)
+		claims := c.Get("jwtClaims").(*auth.Claims)
+		response, err := auditService.GetLogDetail(c.Request().Context(), id, hasRole(claims.Roles, "ADMIN"))
 		if err != nil {
 			if errors.Is(err, audit.ErrAuditLogNotFound) {
 				return c.JSON(http.StatusNotFound, map[string]any{

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/pii"
 )
 
 // ErrAuditLogNotFound は監査ログ未存在を表す。
@@ -13,16 +14,21 @@ var ErrAuditLogNotFound = errors.New("audit log not found")
 
 // Service は audit log の保存・参照・集計を担当する。
 type Service struct {
-	repository *Repository
+	repository     *Repository
+	maskingService *pii.MaskingService
 }
 
 // NewService は audit service を生成する。
-func NewService(repository *Repository) *Service {
-	return &Service{repository: repository}
+func NewService(repository *Repository, maskingService *pii.MaskingService) *Service {
+	return &Service{repository: repository, maskingService: maskingService}
 }
 
 // Save は監査ログを保存する。
 func (s *Service) Save(ctx context.Context, record LogRecord) error {
+	if s.maskingService != nil {
+		record.Prompt = s.maskingService.MaskText(record.Prompt)
+		record.Response = s.maskingService.MaskText(record.Response)
+	}
 	return s.repository.Save(ctx, record)
 }
 
@@ -57,7 +63,7 @@ func (s *Service) GetLogs(ctx context.Context, limit int, offset int, model stri
 }
 
 // GetLogDetail は詳細 API 用レスポンスを返す。
-func (s *Service) GetLogDetail(ctx context.Context, id int64) (*api.AuditLogDetailResponse, error) {
+func (s *Service) GetLogDetail(ctx context.Context, id int64, includeSensitiveContent bool) (*api.AuditLogDetailResponse, error) {
 	item, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -73,9 +79,9 @@ func (s *Service) GetLogDetail(ctx context.Context, id int64) (*api.AuditLogDeta
 		Id:                     item.ID,
 		LatencyMs:              item.LatencyMs,
 		Model:                  item.Model,
-		Prompt:                 item.Prompt,
+		Prompt:                 s.toVisiblePrompt(item.Prompt, includeSensitiveContent),
 		PromptTokens:           item.PromptTokens,
-		Response:               item.Response,
+		Response:               s.toVisibleResponse(item.Response, includeSensitiveContent),
 		TotalTokens:            item.TotalTokens,
 	}, nil
 }
@@ -101,4 +107,27 @@ func toGroundednessEvaluation(item LogRecord) api.GroundednessEvaluation {
 		Reason:            item.GroundednessReason,
 		Status:            api.GroundednessEvaluationStatus(item.GroundednessStatus),
 	}
+}
+
+func (s *Service) toVisiblePrompt(value string, includeSensitiveContent bool) string {
+	if includeSensitiveContent || s.maskingService == nil {
+		return value
+	}
+	return abbreviateForOperator(value)
+}
+
+func (s *Service) toVisibleResponse(value string, includeSensitiveContent bool) string {
+	if includeSensitiveContent || s.maskingService == nil {
+		return value
+	}
+	return abbreviateForOperator(value)
+}
+
+func abbreviateForOperator(value string) string {
+	const maxLength = 80
+	runes := []rune(value)
+	if len(runes) <= maxLength {
+		return value
+	}
+	return string(runes[:maxLength]) + "... [REDACTED]"
 }

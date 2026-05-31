@@ -16,6 +16,7 @@ import (
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/guard"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/knowledge"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/pii"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/prompt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -35,10 +36,11 @@ func NewServer(cfg config.Config) *echo.Echo {
 	}
 	knowledgeRepository := knowledge.NewRepository(postgres.SQLDB())
 	auditRepository := audit.NewRepository(postgres.SQLDB())
-	auditService := audit.NewService(auditRepository)
+	piiMaskingService := pii.NewMaskingService()
+	auditService := audit.NewService(auditRepository, piiMaskingService)
 	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient)
 	knowledgeManagementService := knowledge.NewManagementService(knowledgeRepository, cfg.RAG, openAIClient)
-	reindexJobService := knowledge.NewReindexJobService(knowledgeManagementService)
+	reindexJobService := knowledge.NewReindexJobService(knowledgeManagementService, postgres.SQLDB())
 	dashboardService := dashboard.NewService(postgres.SQLDB(), auditRepository, reindexJobService, openAIClient)
 	promptInjectionGuardService := guard.NewPromptInjectionGuardService()
 	promptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.AdviceTemplatePath)
@@ -63,6 +65,24 @@ func NewServer(cfg config.Config) *echo.Echo {
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{
+			"http://localhost:5173",
+		},
+		AllowMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodDelete,
+			http.MethodOptions,
+		},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+		},
+	}))
 
 	registerRoutes(e, cfg, postgres)
 	RegisterAuthRoutes(e, authService, tokenService)

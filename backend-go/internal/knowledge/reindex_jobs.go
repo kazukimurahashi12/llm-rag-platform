@@ -2,9 +2,8 @@ package knowledge
 
 import (
 	"context"
+	"database/sql"
 	"errors"
-	"sort"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,35 +17,40 @@ type reindexJobScope struct {
 	documentID *int64
 }
 
-type reindexJob struct {
-	jobID        string
-	status       string
-	acceptedAt   time.Time
-	startedAt    *time.Time
-	completedAt  *time.Time
-	documentID   *int64
-	result       *api.KnowledgeReindexResponse
-	errorMessage *string
+type reindexJobRecord struct {
+	jobID              string
+	status             string
+	acceptedAt         time.Time
+	startedAt          *time.Time
+	completedAt        *time.Time
+	documentID         *int64
+	documentsProcessed *int64
+	chunksProcessed    *int64
+	embeddingsUpdated  *int64
+	vectorSearch       *bool
+	errorMessage       *string
 }
 
-// ReindexJobService は再インデックス job をメモリで管理する。
+// ReindexJobService は再インデックス job を DB へ永続化して管理する。
 type ReindexJobService struct {
 	managementService *ManagementService
-	mu                sync.RWMutex
-	jobs              map[string]*reindexJob
+	db                *sql.DB
 }
 
 // NewReindexJobService は job service を生成する。
-func NewReindexJobService(managementService *ManagementService) *ReindexJobService {
+func NewReindexJobService(managementService *ManagementService, db *sql.DB) *ReindexJobService {
 	return &ReindexJobService{
 		managementService: managementService,
-		jobs:              make(map[string]*reindexJob),
+		db:                db,
 	}
 }
 
 // SubmitAllDocumentsJob は全文書対象の job を受け付ける。
 func (s *ReindexJobService) SubmitAllDocumentsJob(ctx context.Context) (*api.KnowledgeReindexJobAcceptedResponse, error) {
-	job := s.createJob(nil)
+	job, err := s.insertJob(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 	go s.executeJob(context.Background(), job.jobID, reindexJobScope{})
 	return toAcceptedResponse(job), nil
 }
@@ -60,18 +64,20 @@ func (s *ReindexJobService) SubmitSingleDocumentJob(ctx context.Context, documen
 	if document == nil {
 		return nil, ErrKnowledgeDocumentNotFound
 	}
-	job := s.createJob(&documentID)
+
+	job, err := s.insertJob(ctx, &documentID)
+	if err != nil {
+		return nil, err
+	}
 	go s.executeJob(context.Background(), job.jobID, reindexJobScope{documentID: &documentID})
 	return toAcceptedResponse(job), nil
 }
 
 // GetJob は単票を返す。
 func (s *ReindexJobService) GetJob(jobID string) (*api.KnowledgeReindexJobStatusResponse, error) {
-	s.mu.RLock()
-	job, ok := s.jobs[jobID]
-	s.mu.RUnlock()
-	if !ok {
-		return nil, ErrKnowledgeReindexJobNotFound
+	job, err := s.findJob(context.Background(), jobID)
+	if err != nil {
+		return nil, err
 	}
 	response := toStatusResponse(job)
 	return &response, nil
@@ -91,34 +97,40 @@ func (s *ReindexJobService) ListJobs(limit int, offset int) *api.KnowledgeReinde
 		safeOffset = 0
 	}
 
-	s.mu.RLock()
-	items := make([]*reindexJob, 0, len(s.jobs))
-	for _, job := range s.jobs {
-		items = append(items, cloneJob(job))
+	rows, err := s.db.Query(`
+		select
+			job_id, status, accepted_at, started_at, completed_at, knowledge_document_id,
+			documents_processed, chunks_processed, embeddings_updated, vector_search_enabled, error_message
+		from knowledge_reindex_jobs
+		order by accepted_at desc
+		limit $1 offset $2
+	`, safeLimit, safeOffset)
+	if err != nil {
+		return &api.KnowledgeReindexJobListResponse{
+			Items:      []api.KnowledgeReindexJobStatusResponse{},
+			Limit:      safeLimit,
+			Offset:     safeOffset,
+			TotalCount: 0,
+		}
 	}
-	s.mu.RUnlock()
+	defer rows.Close()
 
-	sort.SliceStable(items, func(i, j int) bool {
-		return items[i].acceptedAt.After(items[j].acceptedAt)
-	})
-
-	totalCount := int64(len(items))
-	start := safeOffset
-	if start > len(items) {
-		start = len(items)
-	}
-	end := start + safeLimit
-	if end > len(items) {
-		end = len(items)
+	items := make([]api.KnowledgeReindexJobStatusResponse, 0)
+	for rows.Next() {
+		record, scanErr := scanReindexJob(rows)
+		if scanErr != nil {
+			continue
+		}
+		items = append(items, toStatusResponse(record))
 	}
 
-	responses := make([]api.KnowledgeReindexJobStatusResponse, 0, end-start)
-	for _, job := range items[start:end] {
-		responses = append(responses, toStatusResponse(job))
+	var totalCount int64
+	if err := s.db.QueryRow(`select count(*) from knowledge_reindex_jobs`).Scan(&totalCount); err != nil {
+		totalCount = int64(len(items))
 	}
 
 	return &api.KnowledgeReindexJobListResponse{
-		Items:      responses,
+		Items:      items,
 		Limit:      safeLimit,
 		Offset:     safeOffset,
 		TotalCount: totalCount,
@@ -127,27 +139,22 @@ func (s *ReindexJobService) ListJobs(limit int, offset int) *api.KnowledgeReinde
 
 // DeleteJob は完了済み job を削除する。
 func (s *ReindexJobService) DeleteJob(jobID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	job, ok := s.jobs[jobID]
-	if !ok {
-		return ErrKnowledgeReindexJobNotFound
+	job, err := s.findJob(context.Background(), jobID)
+	if err != nil {
+		return err
 	}
 	if job.status == "QUEUED" || job.status == "RUNNING" {
 		return errors.New("knowledge reindex job cannot be deleted while active")
 	}
-	delete(s.jobs, jobID)
-	return nil
+	_, err = s.db.Exec(`delete from knowledge_reindex_jobs where job_id = $1`, jobID)
+	return err
 }
 
 // RetryJob は FAILED job を再投入する。
 func (s *ReindexJobService) RetryJob(ctx context.Context, jobID string) (*api.KnowledgeReindexJobAcceptedResponse, error) {
-	s.mu.RLock()
-	job, ok := s.jobs[jobID]
-	s.mu.RUnlock()
-	if !ok {
-		return nil, ErrKnowledgeReindexJobNotFound
+	job, err := s.findJob(ctx, jobID)
+	if err != nil {
+		return nil, err
 	}
 	if job.status != "FAILED" {
 		return nil, errors.New("only failed reindex jobs can be retried")
@@ -158,21 +165,26 @@ func (s *ReindexJobService) RetryJob(ctx context.Context, jobID string) (*api.Kn
 	return s.SubmitSingleDocumentJob(ctx, *job.documentID)
 }
 
-func (s *ReindexJobService) createJob(documentID *int64) *reindexJob {
-	job := &reindexJob{
+func (s *ReindexJobService) insertJob(ctx context.Context, documentID *int64) (*reindexJobRecord, error) {
+	job := &reindexJobRecord{
 		jobID:      uuid.NewString(),
 		status:     "QUEUED",
 		acceptedAt: time.Now().UTC(),
 		documentID: documentID,
 	}
-	s.mu.Lock()
-	s.jobs[job.jobID] = job
-	s.mu.Unlock()
-	return cloneJob(job)
+	_, err := s.db.ExecContext(ctx, `
+		insert into knowledge_reindex_jobs (
+			job_id, status, accepted_at, knowledge_document_id
+		) values ($1, $2, $3, $4)
+	`, job.jobID, job.status, job.acceptedAt, job.documentID)
+	if err != nil {
+		return nil, err
+	}
+	return job, nil
 }
 
 func (s *ReindexJobService) executeJob(ctx context.Context, jobID string, scope reindexJobScope) {
-	s.markRunning(jobID)
+	_ = s.markRunning(ctx, jobID)
 
 	var (
 		result *api.KnowledgeReindexResponse
@@ -185,52 +197,72 @@ func (s *ReindexJobService) executeJob(ctx context.Context, jobID string, scope 
 	}
 
 	if err != nil {
-		s.markFailed(jobID, err.Error())
+		_ = s.markFailed(ctx, jobID, err.Error())
 		return
 	}
-	s.markCompleted(jobID, result)
+	_ = s.markCompleted(ctx, jobID, result)
 }
 
-func (s *ReindexJobService) markRunning(jobID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	job, ok := s.jobs[jobID]
-	if !ok {
-		return
-	}
+func (s *ReindexJobService) markRunning(ctx context.Context, jobID string) error {
 	now := time.Now().UTC()
-	job.status = "RUNNING"
-	job.startedAt = &now
+	_, err := s.db.ExecContext(ctx, `
+		update knowledge_reindex_jobs
+		set status = 'RUNNING', started_at = $2
+		where job_id = $1
+	`, jobID, now)
+	return err
 }
 
-func (s *ReindexJobService) markCompleted(jobID string, result *api.KnowledgeReindexResponse) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	job, ok := s.jobs[jobID]
-	if !ok {
-		return
-	}
+func (s *ReindexJobService) markCompleted(ctx context.Context, jobID string, result *api.KnowledgeReindexResponse) error {
 	now := time.Now().UTC()
-	job.status = "COMPLETED"
-	job.completedAt = &now
-	job.result = result
-	job.errorMessage = nil
+	_, err := s.db.ExecContext(ctx, `
+		update knowledge_reindex_jobs
+		set
+			status = 'COMPLETED',
+			completed_at = $2,
+			documents_processed = $3,
+			chunks_processed = $4,
+			embeddings_updated = $5,
+			vector_search_enabled = $6,
+			error_message = null
+		where job_id = $1
+	`, jobID, now, result.DocumentsProcessed, result.ChunksProcessed, result.EmbeddingsUpdated, result.VectorSearchEnabled)
+	return err
 }
 
-func (s *ReindexJobService) markFailed(jobID string, message string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	job, ok := s.jobs[jobID]
-	if !ok {
-		return
-	}
+func (s *ReindexJobService) markFailed(ctx context.Context, jobID string, message string) error {
 	now := time.Now().UTC()
-	job.status = "FAILED"
-	job.completedAt = &now
-	job.errorMessage = &message
+	_, err := s.db.ExecContext(ctx, `
+		update knowledge_reindex_jobs
+		set
+			status = 'FAILED',
+			completed_at = $2,
+			error_message = $3
+		where job_id = $1
+	`, jobID, now, message)
+	return err
 }
 
-func toAcceptedResponse(job *reindexJob) *api.KnowledgeReindexJobAcceptedResponse {
+func (s *ReindexJobService) findJob(ctx context.Context, jobID string) (*reindexJobRecord, error) {
+	row := s.db.QueryRowContext(ctx, `
+		select
+			job_id, status, accepted_at, started_at, completed_at, knowledge_document_id,
+			documents_processed, chunks_processed, embeddings_updated, vector_search_enabled, error_message
+		from knowledge_reindex_jobs
+		where job_id = $1
+	`, jobID)
+
+	record, err := scanSingleReindexJob(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrKnowledgeReindexJobNotFound
+		}
+		return nil, err
+	}
+	return record, nil
+}
+
+func toAcceptedResponse(job *reindexJobRecord) *api.KnowledgeReindexJobAcceptedResponse {
 	return &api.KnowledgeReindexJobAcceptedResponse{
 		AcceptedAt: job.acceptedAt,
 		JobId:      job.jobID,
@@ -238,27 +270,80 @@ func toAcceptedResponse(job *reindexJob) *api.KnowledgeReindexJobAcceptedRespons
 	}
 }
 
-func toStatusResponse(job *reindexJob) api.KnowledgeReindexJobStatusResponse {
+func toStatusResponse(job *reindexJobRecord) api.KnowledgeReindexJobStatusResponse {
+	var result *api.KnowledgeReindexResponse
+	if job.documentsProcessed != nil || job.chunksProcessed != nil || job.embeddingsUpdated != nil || job.vectorSearch != nil {
+		result = &api.KnowledgeReindexResponse{
+			DocumentsProcessed:  valueOrZero(job.documentsProcessed),
+			ChunksProcessed:     valueOrZero(job.chunksProcessed),
+			EmbeddingsUpdated:   valueOrZero(job.embeddingsUpdated),
+			VectorSearchEnabled: valueOrFalse(job.vectorSearch),
+		}
+	}
 	return api.KnowledgeReindexJobStatusResponse{
 		AcceptedAt:          job.acceptedAt,
 		CompletedAt:         job.completedAt,
 		ErrorMessage:        job.errorMessage,
 		JobId:               job.jobID,
 		KnowledgeDocumentId: job.documentID,
-		Result:              job.result,
+		Result:              result,
 		StartedAt:           job.startedAt,
 		Status:              job.status,
 	}
 }
 
-func cloneJob(job *reindexJob) *reindexJob {
-	if job == nil {
-		return nil
+func scanReindexJob(rows *sql.Rows) (*reindexJobRecord, error) {
+	record := &reindexJobRecord{}
+	err := rows.Scan(
+		&record.jobID,
+		&record.status,
+		&record.acceptedAt,
+		&record.startedAt,
+		&record.completedAt,
+		&record.documentID,
+		&record.documentsProcessed,
+		&record.chunksProcessed,
+		&record.embeddingsUpdated,
+		&record.vectorSearch,
+		&record.errorMessage,
+	)
+	if err != nil {
+		return nil, err
 	}
-	cloned := *job
-	if job.result != nil {
-		resultCopy := *job.result
-		cloned.result = &resultCopy
+	return record, nil
+}
+
+func scanSingleReindexJob(row *sql.Row) (*reindexJobRecord, error) {
+	record := &reindexJobRecord{}
+	err := row.Scan(
+		&record.jobID,
+		&record.status,
+		&record.acceptedAt,
+		&record.startedAt,
+		&record.completedAt,
+		&record.documentID,
+		&record.documentsProcessed,
+		&record.chunksProcessed,
+		&record.embeddingsUpdated,
+		&record.vectorSearch,
+		&record.errorMessage,
+	)
+	if err != nil {
+		return nil, err
 	}
-	return &cloned
+	return record, nil
+}
+
+func valueOrZero(value *int64) int64 {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
+func valueOrFalse(value *bool) bool {
+	if value == nil {
+		return false
+	}
+	return *value
 }
