@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
 )
 
 // ErrKnowledgeReindexJobNotFound は対象 job 不在を表す。
@@ -35,23 +36,55 @@ type reindexJobRecord struct {
 type ReindexJobService struct {
 	managementService *ManagementService
 	db                *sql.DB
+	cfg               config.ReindexJobConfig
 }
 
 // NewReindexJobService は job service を生成する。
-func NewReindexJobService(managementService *ManagementService, db *sql.DB) *ReindexJobService {
+func NewReindexJobService(managementService *ManagementService, db *sql.DB, cfg config.ReindexJobConfig) *ReindexJobService {
 	return &ReindexJobService{
 		managementService: managementService,
 		db:                db,
+		cfg:               cfg,
 	}
+}
+
+// StartBackgroundMaintenance は起動時回復と定期 cleanup を開始する。
+func (s *ReindexJobService) StartBackgroundMaintenance(ctx context.Context) {
+	if s.cfg.RecoveryEnabled {
+		_, _ = s.RecoverInterruptedJobs(ctx)
+	}
+	if !s.cfg.CleanupEnabled {
+		return
+	}
+
+	interval := time.Duration(s.cfg.CleanupIntervalSeconds) * time.Second
+	if interval <= 0 {
+		interval = time.Hour
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				_, _ = s.PurgeExpiredJobs(context.Background())
+			}
+		}
+	}()
 }
 
 // SubmitAllDocumentsJob は全文書対象の job を受け付ける。
 func (s *ReindexJobService) SubmitAllDocumentsJob(ctx context.Context) (*api.KnowledgeReindexJobAcceptedResponse, error) {
-	job, err := s.insertJob(ctx, nil)
+	job, created, err := s.insertJob(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	go s.executeJob(context.Background(), job.jobID, reindexJobScope{})
+	if created {
+		go s.executeJob(context.Background(), job.jobID, reindexJobScope{})
+	}
 	return toAcceptedResponse(job), nil
 }
 
@@ -65,11 +98,13 @@ func (s *ReindexJobService) SubmitSingleDocumentJob(ctx context.Context, documen
 		return nil, ErrKnowledgeDocumentNotFound
 	}
 
-	job, err := s.insertJob(ctx, &documentID)
+	job, created, err := s.insertJob(ctx, &documentID)
 	if err != nil {
 		return nil, err
 	}
-	go s.executeJob(context.Background(), job.jobID, reindexJobScope{documentID: &documentID})
+	if created {
+		go s.executeJob(context.Background(), job.jobID, reindexJobScope{documentID: &documentID})
+	}
 	return toAcceptedResponse(job), nil
 }
 
@@ -165,22 +200,75 @@ func (s *ReindexJobService) RetryJob(ctx context.Context, jobID string) (*api.Kn
 	return s.SubmitSingleDocumentJob(ctx, *job.documentID)
 }
 
-func (s *ReindexJobService) insertJob(ctx context.Context, documentID *int64) (*reindexJobRecord, error) {
+// PurgeExpiredJobs は retention を過ぎた completed/failed job を削除する。
+func (s *ReindexJobService) PurgeExpiredJobs(ctx context.Context) (int64, error) {
+	retention := time.Duration(s.cfg.RetentionHours) * time.Hour
+	if retention <= 0 {
+		retention = 7 * 24 * time.Hour
+	}
+	cutoff := time.Now().UTC().Add(-retention)
+	result, err := s.db.ExecContext(ctx, `
+		delete from knowledge_reindex_jobs
+		where status in ('COMPLETED', 'FAILED')
+		  and completed_at is not null
+		  and completed_at < $1
+	`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, nil
+	}
+	return deleted, nil
+}
+
+// RecoverInterruptedJobs は再起動時に active job を FAILED へ回復する。
+func (s *ReindexJobService) RecoverInterruptedJobs(ctx context.Context) (int64, error) {
+	now := time.Now().UTC()
+	result, err := s.db.ExecContext(ctx, `
+		update knowledge_reindex_jobs
+		set
+			status = 'FAILED',
+			completed_at = $1,
+			error_message = $2
+		where status in ('QUEUED', 'RUNNING')
+		  and completed_at is null
+	`, now, "reindex job interrupted by process restart")
+	if err != nil {
+		return 0, err
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return 0, nil
+	}
+	return updated, nil
+}
+
+func (s *ReindexJobService) insertJob(ctx context.Context, documentID *int64) (*reindexJobRecord, bool, error) {
+	active, err := s.findActiveJob(ctx, documentID)
+	if err != nil {
+		return nil, false, err
+	}
+	if active != nil {
+		return active, false, nil
+	}
+
 	job := &reindexJobRecord{
 		jobID:      uuid.NewString(),
 		status:     "QUEUED",
 		acceptedAt: time.Now().UTC(),
 		documentID: documentID,
 	}
-	_, err := s.db.ExecContext(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		insert into knowledge_reindex_jobs (
 			job_id, status, accepted_at, knowledge_document_id
 		) values ($1, $2, $3, $4)
 	`, job.jobID, job.status, job.acceptedAt, job.documentID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return job, nil
+	return job, true, nil
 }
 
 func (s *ReindexJobService) executeJob(ctx context.Context, jobID string, scope reindexJobScope) {
@@ -256,6 +344,31 @@ func (s *ReindexJobService) findJob(ctx context.Context, jobID string) (*reindex
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrKnowledgeReindexJobNotFound
+		}
+		return nil, err
+	}
+	return record, nil
+}
+
+func (s *ReindexJobService) findActiveJob(ctx context.Context, documentID *int64) (*reindexJobRecord, error) {
+	query := `
+		select
+			job_id, status, accepted_at, started_at, completed_at, knowledge_document_id,
+			documents_processed, chunks_processed, embeddings_updated, vector_search_enabled, error_message
+		from knowledge_reindex_jobs
+		where status in ('QUEUED', 'RUNNING')
+	`
+	var row *sql.Row
+	if documentID == nil {
+		row = s.db.QueryRowContext(ctx, query+` and knowledge_document_id is null order by accepted_at desc limit 1`)
+	} else {
+		row = s.db.QueryRowContext(ctx, query+` and knowledge_document_id = $1 order by accepted_at desc limit 1`, *documentID)
+	}
+
+	record, err := scanSingleReindexJob(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
 		}
 		return nil, err
 	}

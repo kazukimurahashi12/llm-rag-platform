@@ -35,13 +35,14 @@ func NewServer(cfg config.Config) *echo.Echo {
 		panic(err)
 	}
 	knowledgeRepository := knowledge.NewRepository(postgres.SQLDB())
+	retrievalMetrics := knowledge.NewRetrievalMetrics()
 	auditRepository := audit.NewRepository(postgres.SQLDB())
 	piiMaskingService := pii.NewMaskingService()
 	auditService := audit.NewService(auditRepository, piiMaskingService)
-	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient)
+	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient, retrievalMetrics)
 	knowledgeManagementService := knowledge.NewManagementService(knowledgeRepository, cfg.RAG, openAIClient)
-	reindexJobService := knowledge.NewReindexJobService(knowledgeManagementService, postgres.SQLDB())
-	dashboardService := dashboard.NewService(postgres.SQLDB(), auditRepository, reindexJobService, openAIClient)
+	reindexJobService := knowledge.NewReindexJobService(knowledgeManagementService, postgres.SQLDB(), cfg.ReindexJobs)
+	dashboardService := dashboard.NewService(postgres.SQLDB(), auditRepository, reindexJobService, retrievalService, openAIClient)
 	promptInjectionGuardService := guard.NewPromptInjectionGuardService()
 	promptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.AdviceTemplatePath)
 	if err != nil {
@@ -60,6 +61,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 		groundednessPromptLoader,
 		cfg.OpenAI.DefaultModel,
 	)
+	reindexJobService.StartBackgroundMaintenance(context.Background())
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())

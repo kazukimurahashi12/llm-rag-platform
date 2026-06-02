@@ -43,19 +43,14 @@ func RegisterKnowledgeRoutes(
 		}
 		request := api.KnowledgeDocumentCreateRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
+		}
+		if details := validateKnowledgeCreateRequest(request); len(details) > 0 {
+			return writeValidationError(c, details)
 		}
 		response, err := managementService.CreateDocument(c.Request().Context(), request)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to create knowledge document",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to create knowledge document", []string{err.Error()})
 		}
 		return c.JSON(http.StatusCreated, response)
 	})
@@ -75,27 +70,18 @@ func RegisterKnowledgeRoutes(
 
 		request := api.KnowledgeDocumentUpdateRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
+		}
+		if details := validateKnowledgeUpdateRequest(request); len(details) > 0 {
+			return writeValidationError(c, details)
 		}
 
 		response, err := managementService.UpdateDocument(c.Request().Context(), documentID, request)
 		if err != nil {
 			if errors.Is(err, knowledge.ErrKnowledgeDocumentNotFound) {
-				return c.JSON(http.StatusNotFound, map[string]any{
-					"status":  http.StatusNotFound,
-					"message": "knowledge document not found",
-					"details": []string{},
-				})
+				return writeError(c, http.StatusNotFound, "knowledge document not found", []string{})
 			}
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to update knowledge document",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to update knowledge document", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})
@@ -106,22 +92,14 @@ func roleMiddleware(roles ...string) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			claims, ok := c.Get("jwtClaims").(*auth.Claims)
 			if !ok || claims == nil {
-				return c.JSON(http.StatusUnauthorized, map[string]any{
-					"status":  http.StatusUnauthorized,
-					"message": "missing authenticated user",
-					"details": []string{},
-				})
+				return writeError(c, http.StatusUnauthorized, "missing authenticated user", []string{})
 			}
 			for _, role := range roles {
 				if hasRole(claims.Roles, role) {
 					return next(c)
 				}
 			}
-			return c.JSON(http.StatusForbidden, map[string]any{
-				"status":  http.StatusForbidden,
-				"message": "required role is missing",
-				"details": []string{},
-			})
+			return writeError(c, http.StatusForbidden, "required role is missing", []string{})
 		}
 	}
 }
@@ -129,18 +107,10 @@ func roleMiddleware(roles ...string) echo.MiddlewareFunc {
 func ensureAdmin(c echo.Context) error {
 	claims, ok := c.Get("jwtClaims").(*auth.Claims)
 	if !ok || claims == nil {
-		return c.JSON(http.StatusUnauthorized, map[string]any{
-			"status":  http.StatusUnauthorized,
-			"message": "missing authenticated user",
-			"details": []string{},
-		})
+		return writeError(c, http.StatusUnauthorized, "missing authenticated user", []string{})
 	}
 	if !hasRole(claims.Roles, "ADMIN") {
-		return c.JSON(http.StatusForbidden, map[string]any{
-			"status":  http.StatusForbidden,
-			"message": "admin role is required",
-			"details": []string{},
-		})
+		return writeError(c, http.StatusForbidden, "admin role is required", []string{})
 	}
 	return nil
 }

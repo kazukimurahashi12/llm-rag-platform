@@ -30,11 +30,7 @@ func RegisterReindexRoutes(
 	reindexGroup.POST("/:knowledgeDocumentId/reindex", func(c echo.Context) error {
 		documentID, err := strconv.ParseInt(c.Param("knowledgeDocumentId"), 10, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid knowledgeDocumentId",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusBadRequest, "invalid knowledgeDocumentId", []string{err.Error()})
 		}
 		response, err := reindexJobService.SubmitSingleDocumentJob(c.Request().Context(), documentID)
 		if err != nil {
@@ -89,9 +85,5 @@ func writeKnowledgeJobError(c echo.Context, message string, err error) error {
 			status = http.StatusBadRequest
 		}
 	}
-	return c.JSON(status, map[string]any{
-		"status":  status,
-		"message": message,
-		"details": []string{err.Error()},
-	})
+	return writeError(c, status, message, []string{err.Error()})
 }

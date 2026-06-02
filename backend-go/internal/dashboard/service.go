@@ -12,19 +12,21 @@ import (
 
 // Service は dashboard summary を集計する。
 type Service struct {
-	db              *sql.DB
-	auditRepository *audit.Repository
-	reindexService  *knowledge.ReindexJobService
-	openAIClient    *openai.Client
+	db               *sql.DB
+	auditRepository  *audit.Repository
+	reindexService   *knowledge.ReindexJobService
+	retrievalService *knowledge.RetrievalService
+	openAIClient     *openai.Client
 }
 
 // NewService は dashboard service を生成する。
-func NewService(db *sql.DB, auditRepository *audit.Repository, reindexService *knowledge.ReindexJobService, openAIClient *openai.Client) *Service {
+func NewService(db *sql.DB, auditRepository *audit.Repository, reindexService *knowledge.ReindexJobService, retrievalService *knowledge.RetrievalService, openAIClient *openai.Client) *Service {
 	return &Service{
-		db:              db,
-		auditRepository: auditRepository,
-		reindexService:  reindexService,
-		openAIClient:    openAIClient,
+		db:               db,
+		auditRepository:  auditRepository,
+		reindexService:   reindexService,
+		retrievalService: retrievalService,
+		openAIClient:     openAIClient,
 	}
 }
 
@@ -90,6 +92,12 @@ func (s *Service) GetSummary(ctx context.Context) (*api.DashboardSummaryResponse
 		summary.OpenAiFailFastCount = metrics.FailFastCount
 		summary.OpenAiCircuitOpenTransitions = metrics.CircuitOpenTransitions
 		summary.OpenAiCircuitState = metrics.CircuitState
+	}
+	if s.retrievalService != nil {
+		metrics := s.retrievalService.MetricsSnapshot()
+		summary.VectorAcceptedRetrievals = metrics.VectorAcceptedRetrievals
+		summary.VectorThresholdFallbacks = metrics.VectorThresholdFallbacks
+		summary.VectorThresholdFilteredChunks = metrics.VectorThresholdFilteredChunks
 	}
 	return summary, nil
 }

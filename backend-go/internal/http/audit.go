@@ -31,11 +31,7 @@ func RegisterAuditRoutes(e *echo.Echo, tokenService jwtClaimsParser, auditServic
 		}
 		response, err := auditService.GetLogs(c.Request().Context(), limit, offset, model, from, to)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to list audit logs",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to list audit logs", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})
@@ -43,27 +39,15 @@ func RegisterAuditRoutes(e *echo.Echo, tokenService jwtClaimsParser, auditServic
 	auditGroup.GET("/:auditLogId", func(c echo.Context) error {
 		id, err := strconv.ParseInt(c.Param("auditLogId"), 10, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid auditLogId",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusBadRequest, "invalid auditLogId", []string{err.Error()})
 		}
 		claims := c.Get("jwtClaims").(*auth.Claims)
 		response, err := auditService.GetLogDetail(c.Request().Context(), id, hasRole(claims.Roles, "ADMIN"))
 		if err != nil {
 			if errors.Is(err, audit.ErrAuditLogNotFound) {
-				return c.JSON(http.StatusNotFound, map[string]any{
-					"status":  http.StatusNotFound,
-					"message": "audit log not found",
-					"details": []string{},
-				})
+				return writeError(c, http.StatusNotFound, "audit log not found", []string{})
 			}
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to get audit log detail",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to get audit log detail", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})
@@ -81,9 +65,5 @@ func parseOptionalTime(value string) (*time.Time, error) {
 }
 
 func writeTimeParseError(c echo.Context, field string, err error) error {
-	return c.JSON(http.StatusBadRequest, map[string]any{
-		"status":  http.StatusBadRequest,
-		"message": "invalid " + field,
-		"details": []string{err.Error()},
-	})
+	return writeError(c, http.StatusBadRequest, "invalid "+field, []string{err.Error()})
 }

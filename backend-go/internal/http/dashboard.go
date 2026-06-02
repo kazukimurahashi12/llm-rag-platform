@@ -16,11 +16,7 @@ func RegisterDashboardRoutes(e *echo.Echo, tokenService jwtClaimsParser, dashboa
 	dashboardGroup.GET("/summary", func(c echo.Context) error {
 		response, err := dashboardService.GetSummary(c.Request().Context())
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to build dashboard summary",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to build dashboard summary", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})

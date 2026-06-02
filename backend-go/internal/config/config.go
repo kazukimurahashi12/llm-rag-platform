@@ -15,6 +15,7 @@ type Config struct {
 	Database     DatabaseConfig
 	OpenAI       OpenAIConfig
 	RAG          RAGConfig
+	ReindexJobs  ReindexJobConfig
 	Prompt       PromptConfig
 	AdminUser    UserCredential
 	OperatorUser UserCredential
@@ -55,9 +56,19 @@ type RAGConfig struct {
 	EmbeddingModel                     string
 	EmbeddingDimensions                int64
 	MinSimilarityScore                 float64
+	RerankEnabled                      bool
+	RerankCandidateMultiplier          int64
 	GroundednessThreshold              float64
 	GroundednessFallbackEnabled        bool
 	GroundednessFallbackScoreThreshold float64
+}
+
+// ReindexJobConfig は reindex job の保守運用設定を保持する。
+type ReindexJobConfig struct {
+	CleanupEnabled         bool
+	CleanupIntervalSeconds int64
+	RetentionHours         int64
+	RecoveryEnabled        bool
 }
 
 // PromptConfig は prompt テンプレート設定を保持する。
@@ -111,9 +122,17 @@ func Load() Config {
 			EmbeddingModel:                     getEnv("RAG_EMBEDDING_MODEL", "text-embedding-3-small"),
 			EmbeddingDimensions:                getEnvInt64("RAG_EMBEDDING_DIMENSIONS", 1536),
 			MinSimilarityScore:                 getEnvFloat64("RAG_MIN_SIMILARITY_SCORE", 0.4),
+			RerankEnabled:                      getEnvBool("RAG_RERANK_ENABLED", false),
+			RerankCandidateMultiplier:          getEnvInt64("RAG_RERANK_CANDIDATE_MULTIPLIER", 3),
 			GroundednessThreshold:              getEnvFloat64("RAG_GROUNDEDNESS_THRESHOLD", 0.7),
 			GroundednessFallbackEnabled:        getEnvBool("RAG_GROUNDEDNESS_FALLBACK_ENABLED", true),
 			GroundednessFallbackScoreThreshold: getEnvFloat64("RAG_GROUNDEDNESS_FALLBACK_SCORE_THRESHOLD", 0.3),
+		},
+		ReindexJobs: ReindexJobConfig{
+			CleanupEnabled:         getEnvBool("REINDEX_JOBS_CLEANUP_ENABLED", true),
+			CleanupIntervalSeconds: getEnvInt64("REINDEX_JOBS_CLEANUP_INTERVAL_SECONDS", 3600),
+			RetentionHours:         getEnvInt64("REINDEX_JOBS_RETENTION_HOURS", 168),
+			RecoveryEnabled:        getEnvBool("REINDEX_JOBS_RECOVERY_ENABLED", true),
 		},
 		Prompt: PromptConfig{
 			AdviceTemplatePath:       getEnv("ADVICE_PROMPT_TEMPLATE_PATH", "prompts/management-coach-v1.0.txt"),

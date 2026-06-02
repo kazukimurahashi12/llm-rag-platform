@@ -1106,6 +1106,11 @@ components:
         - vectorAcceptedRetrievals
         - vectorThresholdFallbacks
         - vectorThresholdFilteredChunks
+        - openAiRetryAttempts
+        - openAiTimeouts
+        - openAiFailFastCount
+        - openAiCircuitOpenTransitions
+        - openAiCircuitState
       properties:
         totalAdviceRequests:
           type: integer
@@ -1180,6 +1185,25 @@ components:
           type: number
           format: double
           description: similarity threshold により除外された chunk 数
+        openAiRetryAttempts:
+          type: number
+          format: double
+          description: アプリ起動後に OpenAI 呼び出しで実施した retry 回数
+        openAiTimeouts:
+          type: number
+          format: double
+          description: アプリ起動後に発生した OpenAI timeout 件数
+        openAiFailFastCount:
+          type: number
+          format: double
+          description: circuit breaker が OPEN/HALF_OPEN 制限で fail-fast した回数
+        openAiCircuitOpenTransitions:
+          type: number
+          format: double
+          description: circuit breaker が OPEN に遷移した回数
+        openAiCircuitState:
+          type: string
+          description: 現在の OpenAI circuit breaker 状態
 
     RetrievalEvaluationRequest:
       type: object

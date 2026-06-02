@@ -27,21 +27,13 @@ func RegisterEvaluationRoutes(
 		if value := c.QueryParam("topK"); value != "" {
 			parsed, err := strconv.Atoi(value)
 			if err != nil {
-				return c.JSON(http.StatusBadRequest, map[string]any{
-					"status":  http.StatusBadRequest,
-					"message": "invalid topK",
-					"details": []string{err.Error()},
-				})
+				return writeError(c, http.StatusBadRequest, "invalid topK", []string{err.Error()})
 			}
 			topK = &parsed
 		}
 		response, err := retrievalEvaluationService.EvaluateDefaultCases(c.Request().Context(), topK)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to load default retrieval cases",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to load default retrieval cases", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})
@@ -49,11 +41,7 @@ func RegisterEvaluationRoutes(
 	retrievalGroup.POST("", func(c echo.Context) error {
 		request := api.RetrievalEvaluationRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
 		}
 		return c.JSON(http.StatusOK, retrievalEvaluationService.Evaluate(c.Request().Context(), request, knowledge.RetrievalOptions{}))
 	})
@@ -61,19 +49,11 @@ func RegisterEvaluationRoutes(
 	retrievalGroup.POST("/comparisons", func(c echo.Context) error {
 		request := api.RetrievalEvaluationComparisonRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
 		}
 		response, err := retrievalEvaluationService.CompareDefaultCases(c.Request().Context(), request)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to compare retrieval evaluations",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to compare retrieval evaluations", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})
@@ -85,11 +65,7 @@ func RegisterEvaluationRoutes(
 	evaluationGroup.GET("/default", func(c echo.Context) error {
 		response, err := promptInjectionEvaluationService.EvaluateDefaultCases()
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to load default prompt injection cases",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to load default prompt injection cases", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})
@@ -97,11 +73,7 @@ func RegisterEvaluationRoutes(
 	evaluationGroup.POST("", func(c echo.Context) error {
 		request := api.PromptInjectionEvaluationRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
 		}
 		return c.JSON(http.StatusOK, promptInjectionEvaluationService.Evaluate(request))
 	})
@@ -113,11 +85,7 @@ func RegisterEvaluationRoutes(
 	groundednessGroup.GET("/default", func(c echo.Context) error {
 		response, err := groundednessCaseEvaluationService.EvaluateDefaultCases(c.Request().Context())
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]any{
-				"status":  http.StatusInternalServerError,
-				"message": "failed to load default groundedness cases",
-				"details": []string{err.Error()},
-			})
+			return writeError(c, http.StatusInternalServerError, "failed to load default groundedness cases", []string{err.Error()})
 		}
 		return c.JSON(http.StatusOK, response)
 	})
@@ -125,11 +93,7 @@ func RegisterEvaluationRoutes(
 	groundednessGroup.POST("", func(c echo.Context) error {
 		request := api.GroundednessCaseEvaluationRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
 		}
 		return c.JSON(http.StatusOK, groundednessCaseEvaluationService.Evaluate(c.Request().Context(), request))
 	})

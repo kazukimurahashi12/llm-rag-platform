@@ -18,20 +18,15 @@ func RegisterAuthRoutes(e *echo.Echo, authService *auth.Service, tokenService *a
 	e.POST("/v1/auth/token", func(c echo.Context) error {
 		request := api.AuthTokenRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
+		}
+		if details := validateAuthTokenRequest(request); len(details) > 0 {
+			return writeValidationError(c, details)
 		}
 
 		response, err := authService.IssueToken(request.Username, request.Password)
 		if err != nil {
-			return c.JSON(http.StatusUnauthorized, map[string]any{
-				"status":  http.StatusUnauthorized,
-				"message": err.Error(),
-				"details": []string{},
-			})
+			return writeError(c, http.StatusUnauthorized, err.Error(), []string{})
 		}
 
 		return c.JSON(http.StatusOK, response)
@@ -56,21 +51,13 @@ func jwtMiddleware(tokenService jwtClaimsParser) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			authorization := c.Request().Header.Get("Authorization")
 			if !strings.HasPrefix(authorization, "Bearer ") {
-				return c.JSON(http.StatusUnauthorized, map[string]any{
-					"status":  http.StatusUnauthorized,
-					"message": "missing bearer token",
-					"details": []string{},
-				})
+				return writeError(c, http.StatusUnauthorized, "missing bearer token", []string{})
 			}
 
 			token := strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
 			claims, err := tokenService.ParseAndValidate(token)
 			if err != nil {
-				return c.JSON(http.StatusUnauthorized, map[string]any{
-					"status":  http.StatusUnauthorized,
-					"message": "invalid bearer token",
-					"details": []string{err.Error()},
-				})
+				return writeError(c, http.StatusUnauthorized, "invalid bearer token", []string{err.Error()})
 			}
 
 			c.Set("jwtClaims", claims)
@@ -84,18 +71,10 @@ func adminMiddleware() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			claims, ok := c.Get("jwtClaims").(*auth.Claims)
 			if !ok || claims == nil {
-				return c.JSON(http.StatusUnauthorized, map[string]any{
-					"status":  http.StatusUnauthorized,
-					"message": "missing authenticated user",
-					"details": []string{},
-				})
+				return writeError(c, http.StatusUnauthorized, "missing authenticated user", []string{})
 			}
 			if !hasRole(claims.Roles, "ADMIN") {
-				return c.JSON(http.StatusForbidden, map[string]any{
-					"status":  http.StatusForbidden,
-					"message": "admin role is required",
-					"details": []string{},
-				})
+				return writeError(c, http.StatusForbidden, "admin role is required", []string{})
 			}
 			return next(c)
 		}
