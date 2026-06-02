@@ -7,12 +7,16 @@ import (
 	"time"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/audit"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/dashboard"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/db"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/evaluation"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/guard"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/knowledge"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/pii"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/prompt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -31,7 +35,14 @@ func NewServer(cfg config.Config) *echo.Echo {
 		panic(err)
 	}
 	knowledgeRepository := knowledge.NewRepository(postgres.SQLDB())
-	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient)
+	retrievalMetrics := knowledge.NewRetrievalMetrics()
+	auditRepository := audit.NewRepository(postgres.SQLDB())
+	piiMaskingService := pii.NewMaskingService()
+	auditService := audit.NewService(auditRepository, piiMaskingService)
+	retrievalService := knowledge.NewRetrievalService(knowledgeRepository, cfg.RAG, openAIClient, retrievalMetrics)
+	knowledgeManagementService := knowledge.NewManagementService(knowledgeRepository, cfg.RAG, openAIClient)
+	reindexJobService := knowledge.NewReindexJobService(knowledgeManagementService, postgres.SQLDB(), cfg.ReindexJobs)
+	dashboardService := dashboard.NewService(postgres.SQLDB(), auditRepository, reindexJobService, retrievalService, openAIClient)
 	promptInjectionGuardService := guard.NewPromptInjectionGuardService()
 	promptLoader, err := prompt.NewTemplateLoader(cfg.Prompt.AdviceTemplatePath)
 	if err != nil {
@@ -41,16 +52,48 @@ func NewServer(cfg config.Config) *echo.Echo {
 	if err != nil {
 		panic(err)
 	}
-	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader, groundednessPromptLoader)
+	adviceService := advice.NewService(cfg, retrievalService, openAIClient, promptLoader, groundednessPromptLoader, auditService)
+	retrievalEvaluationService := evaluation.NewRetrievalEvaluationService(retrievalService)
+	promptInjectionEvaluationService := evaluation.NewPromptInjectionEvaluationService(promptInjectionGuardService)
+	groundednessCaseEvaluationService := evaluation.NewGroundednessCaseEvaluationService(
+		cfg.RAG,
+		openAIClient,
+		groundednessPromptLoader,
+		cfg.OpenAI.DefaultModel,
+	)
+	reindexJobService.StartBackgroundMaintenance(context.Background())
 
 	e.HideBanner = true
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{
+			"http://localhost:5173",
+		},
+		AllowMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodDelete,
+			http.MethodOptions,
+		},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+		},
+	}))
 
 	registerRoutes(e, cfg, postgres)
 	RegisterAuthRoutes(e, authService, tokenService)
 	RegisterAdviceRoutes(e, tokenService, adviceService, promptInjectionGuardService)
+	RegisterKnowledgeRoutes(e, tokenService, knowledgeManagementService)
+	RegisterReindexRoutes(e, tokenService, reindexJobService)
+	RegisterAuditRoutes(e, tokenService, auditService)
+	RegisterDashboardRoutes(e, tokenService, dashboardService)
+	RegisterEvaluationRoutes(e, tokenService, retrievalEvaluationService, promptInjectionEvaluationService, groundednessCaseEvaluationService)
 
 	return e
 }

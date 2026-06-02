@@ -165,6 +165,16 @@ LLM を安全かつ採算が合う形で組み込むことです。
 
 `backend/src/main/resources/evaluation/groundedness-cases.json` では、取得根拠に沿った回答と、根拠不足で fallback すべき回答を混在させて評価できます。
 
+## Kotlin / Go 差分
+
+`backend/` と `backend-go/` の差分整理は、[kotlin-go-gap-analysis.md](/Users/kazuki/Documents/GitHub/kazukimurahashi12/llm-rag-platform/llm-rag-platform/docs/kotlin-go-gap-analysis.md) にまとめています。
+
+2026-06-01 時点では OpenAPI 契約差分は解消済みで、残件は主に以下です。
+
+- retrieval の挙動差分確認
+- reindex job の cleanup / duplicate control / restart recovery
+- chunking と error response の実装差分整理
+
 Knowledge 文書は `aceCategory` を持ちます。
 
 - `ABILITY`: スキル習得、知識学習、業務理解

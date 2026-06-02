@@ -15,6 +15,7 @@ type Config struct {
 	Database     DatabaseConfig
 	OpenAI       OpenAIConfig
 	RAG          RAGConfig
+	ReindexJobs  ReindexJobConfig
 	Prompt       PromptConfig
 	AdminUser    UserCredential
 	OperatorUser UserCredential
@@ -32,10 +33,20 @@ type DatabaseConfig struct {
 
 // OpenAIConfig は最小 advice 実装で使う OpenAI 接続設定を保持する。
 type OpenAIConfig struct {
-	APIKey         string
-	BaseURL        string
-	DefaultModel   string
-	TimeoutSeconds int64
+	APIKey                                string
+	BaseURL                               string
+	DefaultModel                          string
+	TimeoutSeconds                        int64
+	ConnectTimeoutSeconds                 int64
+	ReadTimeoutSeconds                    int64
+	RetryMaxAttempts                      int64
+	RetryInitialBackoffMillis             int64
+	RetryMaxBackoffMillis                 int64
+	CircuitBreakerFailureThresholdPercent int64
+	CircuitBreakerMinimumCalls            int64
+	CircuitBreakerWindowSize              int64
+	CircuitBreakerOpenSeconds             int64
+	CircuitBreakerHalfOpenMaxCalls        int64
 }
 
 // RAGConfig は Go 版 retrieval の最小設定を保持する。
@@ -45,9 +56,19 @@ type RAGConfig struct {
 	EmbeddingModel                     string
 	EmbeddingDimensions                int64
 	MinSimilarityScore                 float64
+	RerankEnabled                      bool
+	RerankCandidateMultiplier          int64
 	GroundednessThreshold              float64
 	GroundednessFallbackEnabled        bool
 	GroundednessFallbackScoreThreshold float64
+}
+
+// ReindexJobConfig は reindex job の保守運用設定を保持する。
+type ReindexJobConfig struct {
+	CleanupEnabled         bool
+	CleanupIntervalSeconds int64
+	RetentionHours         int64
+	RecoveryEnabled        bool
 }
 
 // PromptConfig は prompt テンプレート設定を保持する。
@@ -80,10 +101,20 @@ func Load() Config {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		OpenAI: OpenAIConfig{
-			APIKey:         getEnv("OPENAI_API_KEY", ""),
-			BaseURL:        getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-			DefaultModel:   getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
-			TimeoutSeconds: getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
+			APIKey:                                getEnv("OPENAI_API_KEY", ""),
+			BaseURL:                               getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+			DefaultModel:                          getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
+			TimeoutSeconds:                        getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
+			ConnectTimeoutSeconds:                 getEnvInt64("OPENAI_CONNECT_TIMEOUT_SECONDS", 3),
+			ReadTimeoutSeconds:                    getEnvInt64("OPENAI_READ_TIMEOUT_SECONDS", 20),
+			RetryMaxAttempts:                      getEnvInt64("OPENAI_RETRY_MAX_ATTEMPTS", 3),
+			RetryInitialBackoffMillis:             getEnvInt64("OPENAI_RETRY_INITIAL_BACKOFF_MILLIS", 500),
+			RetryMaxBackoffMillis:                 getEnvInt64("OPENAI_RETRY_MAX_BACKOFF_MILLIS", 3000),
+			CircuitBreakerFailureThresholdPercent: getEnvInt64("OPENAI_CIRCUIT_BREAKER_FAILURE_THRESHOLD_PERCENT", 50),
+			CircuitBreakerMinimumCalls:            getEnvInt64("OPENAI_CIRCUIT_BREAKER_MINIMUM_CALLS", 10),
+			CircuitBreakerWindowSize:              getEnvInt64("OPENAI_CIRCUIT_BREAKER_WINDOW_SIZE", 20),
+			CircuitBreakerOpenSeconds:             getEnvInt64("OPENAI_CIRCUIT_BREAKER_OPEN_SECONDS", 30),
+			CircuitBreakerHalfOpenMaxCalls:        getEnvInt64("OPENAI_CIRCUIT_BREAKER_HALF_OPEN_MAX_CALLS", 3),
 		},
 		RAG: RAGConfig{
 			TopK:                               getEnvInt64("RAG_TOP_K", 3),
@@ -91,9 +122,17 @@ func Load() Config {
 			EmbeddingModel:                     getEnv("RAG_EMBEDDING_MODEL", "text-embedding-3-small"),
 			EmbeddingDimensions:                getEnvInt64("RAG_EMBEDDING_DIMENSIONS", 1536),
 			MinSimilarityScore:                 getEnvFloat64("RAG_MIN_SIMILARITY_SCORE", 0.4),
+			RerankEnabled:                      getEnvBool("RAG_RERANK_ENABLED", false),
+			RerankCandidateMultiplier:          getEnvInt64("RAG_RERANK_CANDIDATE_MULTIPLIER", 3),
 			GroundednessThreshold:              getEnvFloat64("RAG_GROUNDEDNESS_THRESHOLD", 0.7),
 			GroundednessFallbackEnabled:        getEnvBool("RAG_GROUNDEDNESS_FALLBACK_ENABLED", true),
 			GroundednessFallbackScoreThreshold: getEnvFloat64("RAG_GROUNDEDNESS_FALLBACK_SCORE_THRESHOLD", 0.3),
+		},
+		ReindexJobs: ReindexJobConfig{
+			CleanupEnabled:         getEnvBool("REINDEX_JOBS_CLEANUP_ENABLED", true),
+			CleanupIntervalSeconds: getEnvInt64("REINDEX_JOBS_CLEANUP_INTERVAL_SECONDS", 3600),
+			RetentionHours:         getEnvInt64("REINDEX_JOBS_RETENTION_HOURS", 168),
+			RecoveryEnabled:        getEnvBool("REINDEX_JOBS_RECOVERY_ENABLED", true),
 		},
 		Prompt: PromptConfig{
 			AdviceTemplatePath:       getEnv("ADVICE_PROMPT_TEMPLATE_PATH", "prompts/management-coach-v1.0.txt"),

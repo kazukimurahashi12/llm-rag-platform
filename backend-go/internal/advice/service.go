@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/audit"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/knowledge"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/openai"
@@ -25,6 +27,7 @@ type Service struct {
 	openAIClient             *openai.Client
 	promptLoader             *prompt.TemplateLoader
 	groundednessPromptLoader *prompt.TemplateLoader
+	auditService             *audit.Service
 }
 
 // NewService は advice service を生成する。
@@ -34,6 +37,7 @@ func NewService(
 	openAIClient *openai.Client,
 	promptLoader *prompt.TemplateLoader,
 	groundednessPromptLoader *prompt.TemplateLoader,
+	auditService *audit.Service,
 ) *Service {
 	return &Service{
 		cfg:                      cfg,
@@ -41,11 +45,13 @@ func NewService(
 		openAIClient:             openAIClient,
 		promptLoader:             promptLoader,
 		groundednessPromptLoader: groundednessPromptLoader,
+		auditService:             auditService,
 	}
 }
 
 // GenerateAdvice は RAG なしの最小 advice を OpenAI から生成する。
 func (s *Service) GenerateAdvice(ctx context.Context, actor Actor, request api.AdviceRequest) (*api.AdviceResponse, error) {
+	startedAt := time.Now()
 	tone := "empathetic"
 	model := s.cfg.OpenAI.DefaultModel
 	if request.Setting != nil && request.Setting.Tone != nil && strings.TrimSpace(*request.Setting.Tone) != "" {
@@ -95,7 +101,7 @@ func (s *Service) GenerateAdvice(ctx context.Context, actor Actor, request api.A
 		retrievedKnowledge.Documents,
 	)
 
-	return &api.AdviceResponse{
+	response := &api.AdviceResponse{
 		Advice: finalAdvice,
 		AceAnalysis: api.AceAnalysis{
 			PrimaryCategory: aceAnalysis.PrimaryCategory,
@@ -110,7 +116,26 @@ func (s *Service) GenerateAdvice(ctx context.Context, actor Actor, request api.A
 			EstimatedCostJpy: 0,
 		},
 		RetrievedDocuments: retrievedKnowledge.Documents,
-	}, nil
+	}
+
+	if s.auditService != nil {
+		_ = s.auditService.Save(ctx, audit.LogRecord{
+			Model:                       result.Model,
+			Prompt:                      instructions + "\n\n" + userMessage,
+			Response:                    finalAdvice,
+			PromptTokens:                result.PromptTokens,
+			CompletionTokens:            result.CompletionTokens,
+			TotalTokens:                 result.PromptTokens + result.CompletionTokens,
+			CostJpy:                     0,
+			LatencyMs:                   time.Since(startedAt).Milliseconds(),
+			GroundednessScore:           groundednessEvaluation.GroundednessScore,
+			GroundednessStatus:          string(groundednessEvaluation.Status),
+			GroundednessReason:          groundednessEvaluation.Reason,
+			GroundednessFallbackApplied: groundednessEvaluation.FallbackApplied,
+		})
+	}
+
+	return response, nil
 }
 
 // IsAdmin は actor が ADMIN を持つかを返す。

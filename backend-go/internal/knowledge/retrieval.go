@@ -17,6 +17,7 @@ type RetrievalService struct {
 	repository *Repository
 	cfg        config.RAGConfig
 	openAI     *openai.Client
+	metrics    *RetrievalMetrics
 }
 
 // RetrievedKnowledge は prompt 用文脈と取得文書をまとめる。
@@ -25,12 +26,25 @@ type RetrievedKnowledge struct {
 	Documents     []api.RetrievedDocument
 }
 
+type scoredChunk struct {
+	chunk ChunkRecord
+	score float64
+}
+
+// RetrievalOptions は retrieval 評価や比較時の上書き条件を表す。
+type RetrievalOptions struct {
+	TopK               int
+	MinSimilarityScore *float64
+	RerankEnabled      *bool
+}
+
 // NewRetrievalService は retrieval service を生成する。
-func NewRetrievalService(repository *Repository, cfg config.RAGConfig, openAI *openai.Client) *RetrievalService {
+func NewRetrievalService(repository *Repository, cfg config.RAGConfig, openAI *openai.Client, metrics *RetrievalMetrics) *RetrievalService {
 	return &RetrievalService{
 		repository: repository,
 		cfg:        cfg,
 		openAI:     openAI,
+		metrics:    metrics,
 	}
 }
 
@@ -43,13 +57,33 @@ func (s *RetrievalService) Retrieve(
 	isAdmin bool,
 	preferredAceCategory api.AceAnalysisPrimaryCategory,
 ) (*RetrievedKnowledge, error) {
+	return s.RetrieveWithOptions(ctx, query, currentUsername, isAdmin, preferredAceCategory, RetrievalOptions{
+		TopK: topK,
+	})
+}
+
+// RetrieveWithOptions は比較用の上書き条件つき retrieval を実行する。
+func (s *RetrievalService) RetrieveWithOptions(
+	ctx context.Context,
+	query string,
+	currentUsername string,
+	isAdmin bool,
+	preferredAceCategory api.AceAnalysisPrimaryCategory,
+	options RetrievalOptions,
+) (*RetrievedKnowledge, error) {
+	topK := options.TopK
 	if topK <= 0 {
 		topK = int(s.cfg.TopK)
 	}
+	candidateLimit := s.candidateLimit(topK, options)
+	keywords := extractKeywords(query)
 
 	if s.cfg.VectorSearchEnabled {
-		vectorResult, err := s.retrieveByVector(ctx, query, topK, currentUsername, isAdmin, preferredAceCategory)
+		vectorResult, err := s.retrieveByVector(ctx, query, keywords, topK, candidateLimit, currentUsername, isAdmin, preferredAceCategory, options)
 		if err == nil && vectorResult != nil && len(vectorResult.Documents) > 0 {
+			if s.metrics != nil {
+				s.metrics.RecordVectorAccepted()
+			}
 			return vectorResult, nil
 		}
 	}
@@ -59,17 +93,11 @@ func (s *RetrievalService) Retrieve(
 		return nil, err
 	}
 
-	keywords := extractKeywords(query)
 	if len(keywords) == 0 {
 		return &RetrievedKnowledge{
 			PromptContext: "追加ナレッジなし",
 			Documents:     []api.RetrievedDocument{},
 		}, nil
-	}
-
-	type scoredChunk struct {
-		chunk ChunkRecord
-		score float64
 	}
 
 	scoredChunks := make([]scoredChunk, 0)
@@ -97,6 +125,11 @@ func (s *RetrievalService) Retrieve(
 		return scoredChunks[i].score > scoredChunks[j].score
 	})
 
+	if len(scoredChunks) > candidateLimit {
+		scoredChunks = scoredChunks[:candidateLimit]
+	}
+
+	scoredChunks = s.rerankKeywordChunks(scoredChunks, keywords, topK, options)
 	if len(scoredChunks) > topK {
 		scoredChunks = scoredChunks[:topK]
 	}
@@ -134,30 +167,42 @@ func (s *RetrievalService) Retrieve(
 func (s *RetrievalService) retrieveByVector(
 	ctx context.Context,
 	query string,
+	keywords []string,
 	topK int,
+	candidateLimit int,
 	currentUsername string,
 	isAdmin bool,
 	preferredAceCategory api.AceAnalysisPrimaryCategory,
+	options RetrievalOptions,
 ) (*RetrievedKnowledge, error) {
 	queryEmbedding, err := s.openAI.Embed(ctx, s.cfg.EmbeddingModel, query, s.cfg.EmbeddingDimensions)
 	if err != nil {
 		return nil, err
 	}
 
-	matches, err := s.repository.FindNearestChunks(ctx, toVectorLiteral(queryEmbedding, s.cfg.EmbeddingDimensions), topK)
+	matches, err := s.repository.FindNearestChunks(ctx, toVectorLiteral(queryEmbedding, s.cfg.EmbeddingDimensions), candidateLimit)
 	if err != nil {
 		return nil, err
 	}
 
 	filteredMatches := make([]VectorMatch, 0, len(matches))
+	filteredOutCount := 0
+	minSimilarityScore := s.cfg.MinSimilarityScore
+	if options.MinSimilarityScore != nil {
+		minSimilarityScore = *options.MinSimilarityScore
+	}
 	for _, match := range matches {
 		if !canAccess(match.ChunkRecord, currentUsername, isAdmin) {
 			continue
 		}
-		if match.SimilarityScore < s.cfg.MinSimilarityScore {
+		if match.SimilarityScore < minSimilarityScore {
+			filteredOutCount++
 			continue
 		}
 		filteredMatches = append(filteredMatches, match)
+	}
+	if s.metrics != nil {
+		s.metrics.RecordThresholdFiltered(filteredOutCount)
 	}
 
 	sort.SliceStable(filteredMatches, func(i, j int) bool {
@@ -167,12 +212,16 @@ func (s *RetrievalService) retrieveByVector(
 	})
 
 	if len(filteredMatches) == 0 {
+		if filteredOutCount > 0 && s.metrics != nil {
+			s.metrics.RecordThresholdFallback()
+		}
 		return &RetrievedKnowledge{
 			PromptContext: "追加ナレッジなし",
 			Documents:     []api.RetrievedDocument{},
 		}, nil
 	}
 
+	filteredMatches = s.rerankVectorMatches(filteredMatches, keywords, topK, options)
 	if len(filteredMatches) > topK {
 		filteredMatches = filteredMatches[:topK]
 	}
@@ -263,6 +312,80 @@ func aceCategoryBoost(documentCategory string, preferredCategory api.AceAnalysis
 	return 0.0
 }
 
+func lexicalRerankScore(title string, content string, keywords []string) float64 {
+	normalizedTitle := strings.ToLower(title)
+	normalizedContent := strings.ToLower(content)
+	titleMatches := 0
+	contentMatches := 0
+	for _, keyword := range keywords {
+		if strings.Contains(normalizedTitle, keyword) {
+			titleMatches++
+		}
+		if strings.Contains(normalizedContent, keyword) {
+			contentMatches++
+		}
+	}
+	return (float64(titleMatches) * 0.25) + (float64(contentMatches) * 0.1)
+}
+
+func (s *RetrievalService) rerankVectorMatches(matches []VectorMatch, keywords []string, topK int, options RetrievalOptions) []VectorMatch {
+	if !s.isRerankEnabled(options) {
+		if len(matches) > topK {
+			return matches[:topK]
+		}
+		return matches
+	}
+
+	sort.SliceStable(matches, func(i, j int) bool {
+		left := matches[i].SimilarityScore + lexicalRerankScore(matches[i].Title, matches[i].Content, keywords)
+		right := matches[j].SimilarityScore + lexicalRerankScore(matches[j].Title, matches[j].Content, keywords)
+		return left > right
+	})
+
+	if len(matches) > topK {
+		return matches[:topK]
+	}
+	return matches
+}
+
+func (s *RetrievalService) rerankKeywordChunks(chunks []scoredChunk, keywords []string, topK int, options RetrievalOptions) []scoredChunk {
+	if !s.isRerankEnabled(options) {
+		if len(chunks) > topK {
+			return chunks[:topK]
+		}
+		return chunks
+	}
+
+	sort.SliceStable(chunks, func(i, j int) bool {
+		left := lexicalRerankScore(chunks[i].chunk.Title, chunks[i].chunk.Content, keywords)
+		right := lexicalRerankScore(chunks[j].chunk.Title, chunks[j].chunk.Content, keywords)
+		return left > right
+	})
+
+	if len(chunks) > topK {
+		return chunks[:topK]
+	}
+	return chunks
+}
+
+func (s *RetrievalService) candidateLimit(topK int, options RetrievalOptions) int {
+	if !s.isRerankEnabled(options) {
+		return topK
+	}
+	multiplier := int(s.cfg.RerankCandidateMultiplier)
+	if multiplier < 1 {
+		multiplier = 1
+	}
+	return topK * multiplier
+}
+
+func (s *RetrievalService) isRerankEnabled(options RetrievalOptions) bool {
+	if options.RerankEnabled != nil {
+		return *options.RerankEnabled
+	}
+	return s.cfg.RerankEnabled
+}
+
 func toRetrievedAceCategory(value string) *api.RetrievedDocumentAceCategory {
 	category := api.RetrievedDocumentAceCategory(value)
 	switch category {
@@ -294,4 +417,11 @@ func toVectorLiteral(embedding []float64, expectedDimensions int64) string {
 	}
 
 	return "[" + strings.Join(parts, ",") + "]"
+}
+
+func (s *RetrievalService) MetricsSnapshot() RetrievalMetricsSnapshot {
+	if s.metrics == nil {
+		return RetrievalMetricsSnapshot{}
+	}
+	return s.metrics.Snapshot()
 }

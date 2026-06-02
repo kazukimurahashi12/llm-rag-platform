@@ -86,6 +86,31 @@ func evaluateGroundedness(
 	return evaluation, advice
 }
 
+// EvaluateGroundedness は評価 API から groundedness judge を再利用するための公開関数。
+func EvaluateGroundedness(
+	ctx context.Context,
+	cfg config.RAGConfig,
+	openAIClient *openai.Client,
+	promptLoader *prompt.TemplateLoader,
+	model string,
+	situation string,
+	targetGoal string,
+	advice string,
+	retrievedDocuments []api.RetrievedDocument,
+) (api.GroundednessEvaluation, string) {
+	return evaluateGroundedness(
+		ctx,
+		cfg,
+		openAIClient,
+		promptLoader,
+		model,
+		situation,
+		targetGoal,
+		advice,
+		retrievedDocuments,
+	)
+}
+
 func parseGroundednessJudgeResponse(text string) (*groundednessJudgeResponse, error) {
 	start := strings.Index(text, "{")
 	end := strings.LastIndex(text, "}")

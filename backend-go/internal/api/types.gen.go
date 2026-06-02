@@ -226,7 +226,22 @@ type DashboardSummaryResponse struct {
 	GroundedResponses             int64   `json:"groundedResponses"`
 	GroundednessFallbackResponses int64   `json:"groundednessFallbackResponses"`
 	LowGroundednessResponses      int64   `json:"lowGroundednessResponses"`
-	QueuedReindexJobs             int64   `json:"queuedReindexJobs"`
+
+	// OpenAiCircuitOpenTransitions circuit breaker が OPEN に遷移した回数
+	OpenAiCircuitOpenTransitions float64 `json:"openAiCircuitOpenTransitions"`
+
+	// OpenAiCircuitState 現在の OpenAI circuit breaker 状態
+	OpenAiCircuitState string `json:"openAiCircuitState"`
+
+	// OpenAiFailFastCount circuit breaker が OPEN/HALF_OPEN 制限で fail-fast した回数
+	OpenAiFailFastCount float64 `json:"openAiFailFastCount"`
+
+	// OpenAiRetryAttempts アプリ起動後に OpenAI 呼び出しで実施した retry 回数
+	OpenAiRetryAttempts float64 `json:"openAiRetryAttempts"`
+
+	// OpenAiTimeouts アプリ起動後に発生した OpenAI timeout 件数
+	OpenAiTimeouts    float64 `json:"openAiTimeouts"`
+	QueuedReindexJobs int64   `json:"queuedReindexJobs"`
 
 	// ReindexSuccessRate completed / (completed + failed) を 0.0 から 1.0 で返す
 	ReindexSuccessRate           float64 `json:"reindexSuccessRate"`

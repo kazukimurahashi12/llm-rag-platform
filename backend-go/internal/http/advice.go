@@ -3,7 +3,6 @@ package http
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/api"
@@ -26,26 +25,14 @@ func RegisterAdviceRoutes(
 	adviceGroup.POST("/advice", func(c echo.Context) error {
 		request := api.AdviceRequest{}
 		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "invalid request body",
-				"details": []string{err.Error()},
-			})
+			return writeInvalidRequestBody(c, err)
 		}
 
-		if strings.TrimSpace(request.MemberContext.Situation) == "" || strings.TrimSpace(request.MemberContext.TargetGoal) == "" {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": "memberContext.situation and memberContext.targetGoal are required",
-				"details": []string{},
-			})
+		if details := validateAdviceRequest(request); len(details) > 0 {
+			return writeValidationError(c, details)
 		}
 		if err := promptInjectionGuardService.ValidateUserInput(request.MemberContext.Situation, request.MemberContext.TargetGoal); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]any{
-				"status":  http.StatusBadRequest,
-				"message": err.Error(),
-				"details": []string{},
-			})
+			return writeError(c, http.StatusBadRequest, err.Error(), []string{})
 		}
 
 		claims := c.Get("jwtClaims").(*auth.Claims)
@@ -66,18 +53,14 @@ func RegisterAdviceRoutes(
 					statusCode = http.StatusInternalServerError
 				case openai.ErrorKindTimeout:
 					statusCode = http.StatusGatewayTimeout
-				case openai.ErrorKindTransport, openai.ErrorKindUpstream:
+				case openai.ErrorKindTransport, openai.ErrorKindUpstream, openai.ErrorKindCircuit:
 					statusCode = http.StatusServiceUnavailable
 				}
 			} else {
 				details = append(details, err.Error())
 			}
 
-			return c.JSON(statusCode, map[string]any{
-				"status":  statusCode,
-				"message": "failed to generate advice in backend-go",
-				"details": details,
-			})
+			return writeError(c, statusCode, "failed to generate advice in backend-go", details)
 		}
 
 		return c.JSON(http.StatusOK, response)
