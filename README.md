@@ -2,7 +2,6 @@
 
 Management Support AI "ONBOARD Guide API"
 
-ONBOARD Guide API は、ONBOARD AI プロダクトへの組み込みを想定して設計した、
 マネジメント支援 AI バックエンドの ポートフォリオです。
 単なるチャット UI ではなく、RAG、ガードレール、コスト・監査 を備えた、実運用可能なAPI基盤を目指しています。
 
