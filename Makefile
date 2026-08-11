@@ -2,9 +2,9 @@ SHELL := /bin/bash
 
 .PHONY: help bootstrap env frontend-env check-openai install-frontend \
 	up up-build down down-volumes logs ps \
-	postgres backend-go frontend backend-go-build frontend-build \
-	test test-go build build-frontend backend-go-codegen \
-	backend-go-retrieval-eval smoke-go backend-go-local frontend-local auth-admin auth-operator
+	postgres backend-go agent-runtime frontend backend-go-build agent-runtime-build frontend-build \
+	test test-go build build-frontend build-agent-runtime backend-go-codegen \
+	backend-go-retrieval-eval smoke-go backend-go-local agent-runtime-local frontend-local auth-admin auth-operator
 
 
 # 初回クローン時に .env 作成と frontend 依存関係インストールをまとめて行う
@@ -22,9 +22,10 @@ env:
 frontend-env:
 	@if [ ! -f frontend/.env ]; then cp frontend/.env.example frontend/.env; echo "frontend/.env.example から frontend/.env を作成しました"; else echo "frontend/.env は既に存在します"; fi
 
-# frontend の npm 依存関係をインストールする
+# frontend と agent-runtime の npm 依存関係をインストールする
 install-frontend:
 	cd frontend && npm install
+	cd agent-runtime && npm install
 
 # Docker 起動前に OPENAI_API_KEY が設定済みかを確認する
 check-openai:
@@ -64,6 +65,10 @@ postgres:
 backend-go:
 	docker compose up -d backend-go
 
+# OpenAI Agents SDK sidecar コンテナだけを起動
+agent-runtime:
+	docker compose up -d agent-runtime
+
 # frontend コンテナだけを起動
 frontend:
 	docker compose up -d frontend
@@ -71,6 +76,10 @@ frontend:
 # Go 版 backend の Docker イメージを再ビルドして起動
 backend-go-build:
 	docker compose up -d --build backend-go
+
+# OpenAI Agents SDK sidecar の Docker イメージを再ビルドして起動
+agent-runtime-build:
+	docker compose up -d --build agent-runtime
 
 # Go 版 backend の OpenAPI 生成コードを再作成
 backend-go-codegen:
@@ -88,8 +97,8 @@ smoke-go:
 frontend-build:
 	docker compose up -d --build frontend
 
-# Go backend test と frontend build をまとめて実行
-test: test-go build-frontend
+# Go backend test と frontend / agent-runtime build をまとめて実行
+test: test-go build-agent-runtime build-frontend
 
 # Go backend のテストを実行
 test-go:
@@ -98,6 +107,10 @@ test-go:
 # frontend の build を実行
 build: build-frontend
 
+# agent-runtime の build を実行
+build-agent-runtime:
+	cd agent-runtime && npm run build
+
 # frontend の本番 build を実行
 build-frontend:
 	cd frontend && npm run build
@@ -105,6 +118,10 @@ build-frontend:
 # Go backend をローカルプロセスとして起動
 backend-go-local: check-openai
 	set -a && source .env && set +a && cd backend-go && go run ./cmd/server
+
+# OpenAI Agents SDK sidecar をローカルプロセスとして起動
+agent-runtime-local: check-openai
+	set -a && source .env && set +a && cd agent-runtime && npm run dev
 
 # frontend をローカル開発サーバーで起動
 frontend-local:

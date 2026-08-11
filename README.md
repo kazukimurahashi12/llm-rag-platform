@@ -59,6 +59,7 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - OpenAPI 3.0 ベースで API スキーマを管理
 - Go 側 OpenAPI 正本から oapi-codegen により model を自動生成
 - Go / Echo で実装
+- OpenAI Agents SDK sidecar による Agent MVP を実装
 - OpenAI Responses API を呼び出して助言を生成
 - OpenAI 呼び出し層に timeout / retry / circuit breaker を入れ、一時障害時は fail-fast で明確なエラーを返す
 - usage 情報として model / token / estimated cost を返却
@@ -71,6 +72,7 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - groundedness が低い場合は、断定的な回答を返さず保守的な fallback 応答へ切り替える
 - groundedness を audit log と dashboard に保存・集計する
 - retrieval / prompt injection / groundedness の標準評価ケースを持ち、評価 API で回帰確認できる
+- Agent が既存 RAG / dashboard / evaluation / advice API を tool として利用できる
 - prompt injection guard は日本語パターン追加と正規化強化まで実装済みで、単語単独の文脈判定やスコアリングは今後の改善項目
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
 - Prometheus 向けに Go backend のメトリクスを公開
@@ -79,7 +81,8 @@ LLM を安全かつ採算が合う形で組み込むことです。
 ## 技術スタック
 
 - Language / Framework: Go, Echo
-- Build: Go modules, oapi-codegen
+- Agent Runtime: Node.js, TypeScript, OpenAI Agents SDK
+- Build: Go modules, oapi-codegen, npm
 - Database: PostgreSQL, pgvector
 - AI / LLM: OpenAI API
 - Observability: Prometheus, Grafana
@@ -88,9 +91,12 @@ LLM を安全かつ採算が合う形で組み込むことです。
 ## システム構成
 
 ```text
-[API Layer] -> [Service Layer] -> [AI/RAG Domain] -> [Infrastructure]
-      |               |                |                |
-   REST API      Business Logic    RAG/Prompt/Safety   pgvector/LLM API
+frontend
+  -> backend-go
+      -> service / RAG / audit / evaluation
+      -> agent-runtime
+          -> OpenAI Agents SDK
+          -> backend-go tools
 ```
 
 ## API
@@ -170,6 +176,24 @@ Go 版 backend では、標準 retrieval ケース用の seed を投入して ke
 make backend-go-retrieval-eval
 ```
 
+### Agent API
+
+- `POST /v1/agent/tasks`
+
+Agent API は Go backend が JWT 認証を検証した上で、OpenAI Agents SDK sidecar の `agent-runtime` へ task を委譲します。
+MVP では read-only tools と advice 生成だけを許可しています。
+
+利用する tool:
+
+- `knowledge.search`
+- `dashboard.summary`
+- `retrieval.evaluate`
+- `groundedness.evaluate`
+- `promptInjection.evaluate`
+- `advice.generate`
+
+書き込み tool は MVP では無効です。
+
 ## Go 正本化
 
 現在は Go 版 backend を唯一の実行正本としています。通常の Compose 起動、frontend 接続、Prometheus scrape、Makefile の標準テストは Go 版を対象にしています。
@@ -242,11 +266,13 @@ Knowledge 文書は `aceCategory` を持ちます。
 
 - `postgres`
 - `backend-go`
+- `agent-runtime`
 - `frontend`
 - `prometheus`
 - `grafana`
 
 `backend-go` は Go / Echo 版を `8081` で起動します。
+`agent-runtime` は OpenAI Agents SDK sidecar を `8091` で起動します。
 
 このリポジトリを初めて clone して、ローカルで起動できる状態にする最短手順:
 
@@ -269,7 +295,7 @@ make bootstrap
 OPENAI_API_KEY=your_openai_api_key
 ```
 
-4. Docker Compose で backend-go / frontend / postgres / prometheus / grafana を起動する
+4. Docker Compose で backend-go / agent-runtime / frontend / postgres / prometheus / grafana を起動する
 
 ```bash
 make up-build
@@ -280,6 +306,7 @@ make up-build
 ```text
 frontend: http://localhost:5173
 backend-go: http://localhost:8081
+agent-runtime: http://localhost:8091
 prometheus: http://localhost:9090
 grafana: http://localhost:3000
 ```

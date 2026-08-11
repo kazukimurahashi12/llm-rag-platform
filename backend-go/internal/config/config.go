@@ -14,11 +14,19 @@ type Config struct {
 	JWTExpiresIn int64
 	Database     DatabaseConfig
 	OpenAI       OpenAIConfig
+	AgentRuntime AgentRuntimeConfig
 	RAG          RAGConfig
 	ReindexJobs  ReindexJobConfig
 	Prompt       PromptConfig
 	AdminUser    UserCredential
 	OperatorUser UserCredential
+}
+
+// AgentRuntimeConfig は OpenAI Agents SDK sidecar への接続設定を保持する。
+type AgentRuntimeConfig struct {
+	BaseURL        string
+	TimeoutSeconds int64
+	MaxTurns       int64
 }
 
 // DatabaseConfig は PostgreSQL 接続設定を保持する。
@@ -134,6 +142,11 @@ func Load() Config {
 			CircuitBreakerWindowSize:              getEnvInt64("OPENAI_CIRCUIT_BREAKER_WINDOW_SIZE", 20),
 			CircuitBreakerOpenSeconds:             getEnvInt64("OPENAI_CIRCUIT_BREAKER_OPEN_SECONDS", 30),
 			CircuitBreakerHalfOpenMaxCalls:        getEnvInt64("OPENAI_CIRCUIT_BREAKER_HALF_OPEN_MAX_CALLS", 3),
+		},
+		AgentRuntime: AgentRuntimeConfig{
+			BaseURL:        getEnv("AGENT_RUNTIME_BASE_URL", "http://localhost:8091"),
+			TimeoutSeconds: getEnvInt64("AGENT_RUNTIME_TIMEOUT_SECONDS", 45),
+			MaxTurns:       getEnvInt64("AGENT_MAX_TURNS", 5),
 		},
 		RAG: RAGConfig{
 			TopK:                               getEnvInt64("RAG_TOP_K", 3),

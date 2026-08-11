@@ -14,6 +14,18 @@ const (
 	AceAnalysisPrimaryCategoryEXPECTATION AceAnalysisPrimaryCategory = "EXPECTATION"
 )
 
+// Defines values for AgentTaskResponseStatus.
+const (
+	AgentTaskResponseStatusCOMPLETED AgentTaskResponseStatus = "COMPLETED"
+	AgentTaskResponseStatusFAILED    AgentTaskResponseStatus = "FAILED"
+)
+
+// Defines values for AgentToolCallStatus.
+const (
+	AgentToolCallStatusCOMPLETED AgentToolCallStatus = "COMPLETED"
+	AgentToolCallStatusFAILED    AgentToolCallStatus = "FAILED"
+)
+
 // Defines values for GroundednessCaseEvaluationCaseRequestExpectedStatus.
 const (
 	GroundednessCaseEvaluationCaseRequestExpectedStatusGROUNDED        GroundednessCaseEvaluationCaseRequestExpectedStatus = "GROUNDED"
@@ -157,6 +169,41 @@ type AdviceSetting struct {
 	// Tone 回答のトーン
 	Tone *string `json:"tone,omitempty"`
 }
+
+// AgentTaskRequest defines model for AgentTaskRequest.
+type AgentTaskRequest struct {
+	// Input Agent に依頼する自然文 task
+	Input string `json:"input"`
+
+	// MaxTurns Agents SDK runner の最大 turn 数。未指定時は backend 設定値を使う。
+	MaxTurns *int `json:"maxTurns,omitempty"`
+}
+
+// AgentTaskResponse defines model for AgentTaskResponse.
+type AgentTaskResponse struct {
+	FailureReason *string                 `json:"failureReason,omitempty"`
+	FinalAnswer   string                  `json:"finalAnswer"`
+	Status        AgentTaskResponseStatus `json:"status"`
+	TaskId        string                  `json:"taskId"`
+	ToolCalls     []AgentToolCall         `json:"toolCalls"`
+	TraceId       *string                 `json:"traceId,omitempty"`
+}
+
+// AgentTaskResponseStatus defines model for AgentTaskResponse.Status.
+type AgentTaskResponseStatus string
+
+// AgentToolCall defines model for AgentToolCall.
+type AgentToolCall struct {
+	ErrorMessage  *string             `json:"errorMessage,omitempty"`
+	InputSummary  *string             `json:"inputSummary,omitempty"`
+	LatencyMs     int64               `json:"latencyMs"`
+	OutputSummary *string             `json:"outputSummary,omitempty"`
+	Status        AgentToolCallStatus `json:"status"`
+	ToolName      string              `json:"toolName"`
+}
+
+// AgentToolCallStatus defines model for AgentToolCall.Status.
+type AgentToolCallStatus string
 
 // AuditLogDetailResponse defines model for AuditLogDetailResponse.
 type AuditLogDetailResponse struct {
@@ -687,6 +734,9 @@ type EvaluateDefaultRetrievalCasesParams struct {
 	// TopK 評価時に使う retrieval 件数。未指定時は評価ファイルまたは rag.top-k を使う。
 	TopK *int `form:"topK,omitempty" json:"topK,omitempty"`
 }
+
+// RunAgentTaskJSONRequestBody defines body for RunAgentTask for application/json ContentType.
+type RunAgentTaskJSONRequestBody = AgentTaskRequest
 
 // IssueAuthTokenJSONRequestBody defines body for IssueAuthToken for application/json ContentType.
 type IssueAuthTokenJSONRequestBody = AuthTokenRequest

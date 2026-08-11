@@ -71,8 +71,30 @@ services:
       AUDIT_ADMIN_PASSWORD: ${AUDIT_ADMIN_PASSWORD:-change-me}
       AUDIT_OPERATOR_USERNAME: ${AUDIT_OPERATOR_USERNAME:-operator}
       AUDIT_OPERATOR_PASSWORD: ${AUDIT_OPERATOR_PASSWORD:-change-operator}
+      AGENT_RUNTIME_BASE_URL: http://agent-runtime:8091
+      AGENT_RUNTIME_TIMEOUT_SECONDS: ${AGENT_RUNTIME_TIMEOUT_SECONDS:-45}
+      AGENT_MAX_TURNS: ${AGENT_MAX_TURNS:-5}
     ports:
       - "8081:8081"
+
+  agent-runtime:
+    build:
+      context: ./agent-runtime
+      dockerfile: Dockerfile
+    container_name: onboard-agent-runtime
+    restart: unless-stopped
+    depends_on:
+      backend-go:
+        condition: service_started
+    environment:
+      AGENT_RUNTIME_PORT: 8091
+      BACKEND_GO_BASE_URL: http://backend-go:8081
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      AGENT_DEFAULT_MODEL: ${AGENT_DEFAULT_MODEL:-gpt-4o-mini}
+      AGENT_REQUEST_TIMEOUT_MS: ${AGENT_REQUEST_TIMEOUT_MS:-30000}
+      AGENT_MAX_TURNS: ${AGENT_MAX_TURNS:-5}
+    ports:
+      - "8091:8091"
 
   frontend:
     build:

@@ -26,6 +26,16 @@ func TestValidateKnowledgeCreateRequest(t *testing.T) {
 	assertContainsDetail(t, details, "allowedUsernames[0]: must not be blank")
 }
 
+func TestValidateAgentTaskRequest(t *testing.T) {
+	maxTurns := 11
+	details := validateAgentTaskRequest(api.AgentTaskRequest{
+		MaxTurns: &maxTurns,
+	})
+
+	assertContainsDetail(t, details, "input is required")
+	assertContainsDetail(t, details, "maxTurns must be between 1 and 10")
+}
+
 func assertContainsDetail(t *testing.T, details []string, want string) {
 	t.Helper()
 	for _, detail := range details {
