@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/advice"
+	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/agent"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/audit"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/auth"
 	"github.com/kazukimurahashi12/llm-rag-platform/backend-go/internal/config"
@@ -29,6 +30,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 	e := echo.New()
 	tokenService := auth.NewTokenService(cfg)
 	authService := auth.NewService(cfg, tokenService)
+	agentClient := agent.NewClient(cfg.AgentRuntime)
 	openAIClient := openai.NewClient(cfg.OpenAI)
 	postgres, err := db.NewPostgres(cfg.Database)
 	if err != nil {
@@ -91,6 +93,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 
 	registerRoutes(e, cfg, postgres)
 	RegisterAuthRoutes(e, authService, tokenService)
+	RegisterAgentRoutes(e, tokenService, agentClient)
 	RegisterAdviceRoutes(e, tokenService, adviceService, promptInjectionGuardService)
 	RegisterKnowledgeRoutes(e, tokenService, knowledgeManagementService)
 	RegisterReindexRoutes(e, tokenService, reindexJobService)

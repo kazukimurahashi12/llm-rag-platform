@@ -48,3 +48,5 @@ bin/
 ### Frontend ###
 frontend/node_modules/
 frontend/dist/
+agent-runtime/node_modules/
+agent-runtime/dist/

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 API_BASE_URL="${API_BASE_URL:-http://127.0.0.1:8081}"
+AGENT_RUNTIME_BASE_URL="${AGENT_RUNTIME_BASE_URL:-http://127.0.0.1:8091}"
 ADMIN_USERNAME="${AUDIT_ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${AUDIT_ADMIN_PASSWORD:-change-me}"
 RUN_ADVICE_SMOKE="${RUN_ADVICE_SMOKE:-false}"
@@ -108,6 +109,28 @@ log "metrics"
 request GET /metrics "$metrics_file"
 grep -q 'knowledge_retrieval_vector_accepted_total' "$metrics_file"
 grep -q 'knowledge_reindex_jobs_accepted_total' "$metrics_file"
+
+agent_validation_file="$tmp_dir/agent-validation.json"
+log "agent validation"
+agent_validation_status="$(curl -sS -o "$agent_validation_file" -w '%{http_code}' -X POST "$API_BASE_URL/v1/agent/tasks" \
+  "${auth_header[@]}" \
+  -H 'Content-Type: application/json' \
+  -d '{"input":""}')"
+if [[ "$agent_validation_status" != "400" ]]; then
+  printf 'request failed: POST /v1/agent/tasks validation -> %s\n' "$agent_validation_status" >&2
+  cat "$agent_validation_file" >&2
+  exit 1
+fi
+grep -q '"message":"Validation error"' "$agent_validation_file"
+
+log "agent runtime health"
+agent_status="$(curl -sS -o "$tmp_dir/agent-runtime-health.json" -w '%{http_code}' "$AGENT_RUNTIME_BASE_URL/health")"
+if [[ "$agent_status" -lt 200 || "$agent_status" -ge 300 ]]; then
+  printf 'request failed: GET agent-runtime /health -> %s\n' "$agent_status" >&2
+  cat "$tmp_dir/agent-runtime-health.json" >&2
+  exit 1
+fi
+grep -q '"status":"UP"' "$tmp_dir/agent-runtime-health.json"
 
 if [[ "$RUN_ADVICE_SMOKE" == "true" ]]; then
   advice_file="$tmp_dir/advice.json"

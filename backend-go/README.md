@@ -61,12 +61,16 @@ go run ./cmd/server
 - `AUDIT_OPERATOR_USERNAME`
 - `AUDIT_OPERATOR_PASSWORD`
 - `ADVICE_PROMPT_TEMPLATE_PATH`
+- `AGENT_RUNTIME_BASE_URL`
+- `AGENT_RUNTIME_TIMEOUT_SECONDS`
+- `AGENT_MAX_TURNS`
 
 現在の endpoint:
 - `GET /health`
 - `GET /version`
 - `POST /v1/auth/token`
 - `GET /v1/auth/me`
+- `POST /v1/agent/tasks`
 - `POST /v1/management/advice`
 - `GET /v1/knowledge-documents`
 - `POST /v1/knowledge-documents`
@@ -89,6 +93,7 @@ go run ./cmd/server
 - `GET /v1/dashboard/summary`
 
 `GET /health` は PostgreSQL 疎通も確認し、`db` フィールドに `UP / DOWN` を返します。
+`POST /v1/agent/tasks` は OpenAI Agents SDK sidecar へ task を委譲し、既存 Go API を tool として使った finalAnswer / toolCalls / traceId を返します。MVP では read-only tools と advice 生成のみを許可しています。
 `POST /v1/management/advice` には最小の prompt injection guard を入れており、日本語/英語の典型パターンと表記揺れ正規化で危険入力を block します。
 OpenAI 呼び出し層には timeout / retry / circuit breaker を入れており、retry は `TIMEOUT / TRANSPORT / 429 / 502 / 503 / 504` の一時障害だけを対象にします。circuit breaker が OPEN の間は fail-fast で `503` を返します。
 `/v1/knowledge-documents` は Go 側の最小 CRUD として、一覧・登録・更新まで対応しています。登録/更新時は固定長 chunk を再生成し、vector search 有効時は embedding も同期再作成します。

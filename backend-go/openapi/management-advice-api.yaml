@@ -37,6 +37,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/agent/tasks:
+    post:
+      operationId: runAgentTask
+      summary: Agent task を実行する
+      description: |-
+        OpenAI Agents SDK sidecar に task を渡し、既存の Go backend API を tool として利用しながら
+        最終回答、toolCalls、traceId を返す。MVP では read-only tools と advice 生成のみを許可する。
+      tags:
+        - Agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentTaskRequest'
+      responses:
+        '200':
+          description: Agent task 実行成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTaskResponse'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Agent runtime 実行失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/management/advice:
     post:
       operationId: getAdvice
@@ -1204,6 +1238,71 @@ components:
         openAiCircuitState:
           type: string
           description: 現在の OpenAI circuit breaker 状態
+
+    AgentTaskRequest:
+      type: object
+      required:
+        - input
+      properties:
+        input:
+          type: string
+          minLength: 1
+          description: Agent に依頼する自然文 task
+        maxTurns:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Agents SDK runner の最大 turn 数。未指定時は backend 設定値を使う。
+
+    AgentTaskResponse:
+      type: object
+      required:
+        - taskId
+        - status
+        - finalAnswer
+        - toolCalls
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+          enum:
+            - COMPLETED
+            - FAILED
+        finalAnswer:
+          type: string
+        toolCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentToolCall'
+        traceId:
+          type: string
+        failureReason:
+          type: string
+
+    AgentToolCall:
+      type: object
+      required:
+        - toolName
+        - status
+        - latencyMs
+      properties:
+        toolName:
+          type: string
+        status:
+          type: string
+          enum:
+            - COMPLETED
+            - FAILED
+        latencyMs:
+          type: integer
+          format: int64
+        inputSummary:
+          type: string
+        outputSummary:
+          type: string
+        errorMessage:
+          type: string
 
     RetrievalEvaluationRequest:
       type: object
