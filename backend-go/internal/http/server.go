@@ -34,6 +34,9 @@ func NewServer(cfg config.Config) *echo.Echo {
 	if err != nil {
 		panic(err)
 	}
+	if err := postgres.Migrate(context.Background()); err != nil {
+		panic(err)
+	}
 	knowledgeRepository := knowledge.NewRepository(postgres.SQLDB())
 	retrievalMetrics := knowledge.NewRetrievalMetrics()
 	auditRepository := audit.NewRepository(postgres.SQLDB())
@@ -94,6 +97,7 @@ func NewServer(cfg config.Config) *echo.Echo {
 	RegisterAuditRoutes(e, tokenService, auditService)
 	RegisterDashboardRoutes(e, tokenService, dashboardService)
 	RegisterEvaluationRoutes(e, tokenService, retrievalEvaluationService, promptInjectionEvaluationService, groundednessCaseEvaluationService)
+	RegisterMetricsRoutes(e, openAIClient, retrievalService, reindexJobService)
 
 	return e
 }

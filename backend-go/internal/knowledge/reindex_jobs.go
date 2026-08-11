@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,6 +38,7 @@ type ReindexJobService struct {
 	managementService *ManagementService
 	db                *sql.DB
 	cfg               config.ReindexJobConfig
+	metrics           *ReindexJobMetrics
 }
 
 // NewReindexJobService は job service を生成する。
@@ -45,6 +47,43 @@ func NewReindexJobService(managementService *ManagementService, db *sql.DB, cfg 
 		managementService: managementService,
 		db:                db,
 		cfg:               cfg,
+		metrics:           &ReindexJobMetrics{},
+	}
+}
+
+type ReindexJobMetricsSnapshot struct {
+	AcceptedTotal         float64
+	RetriedTotal          float64
+	DeletedTotal          float64
+	CompletedTotal        float64
+	FailedTotal           float64
+	CleanupDeletedTotal   float64
+	ExecutionSecondsSum   float64
+	ExecutionSecondsCount float64
+}
+
+// ReindexJobMetrics は Go 版 reindex job の Prometheus 用集計値を保持する。
+type ReindexJobMetrics struct {
+	acceptedTotal         atomic.Int64
+	retriedTotal          atomic.Int64
+	deletedTotal          atomic.Int64
+	completedTotal        atomic.Int64
+	failedTotal           atomic.Int64
+	cleanupDeletedTotal   atomic.Int64
+	executionMillisSum    atomic.Int64
+	executionSecondsCount atomic.Int64
+}
+
+func (m *ReindexJobMetrics) Snapshot() ReindexJobMetricsSnapshot {
+	return ReindexJobMetricsSnapshot{
+		AcceptedTotal:         float64(m.acceptedTotal.Load()),
+		RetriedTotal:          float64(m.retriedTotal.Load()),
+		DeletedTotal:          float64(m.deletedTotal.Load()),
+		CompletedTotal:        float64(m.completedTotal.Load()),
+		FailedTotal:           float64(m.failedTotal.Load()),
+		CleanupDeletedTotal:   float64(m.cleanupDeletedTotal.Load()),
+		ExecutionSecondsSum:   float64(m.executionMillisSum.Load()) / 1000,
+		ExecutionSecondsCount: float64(m.executionSecondsCount.Load()),
 	}
 }
 
@@ -83,6 +122,7 @@ func (s *ReindexJobService) SubmitAllDocumentsJob(ctx context.Context) (*api.Kno
 		return nil, err
 	}
 	if created {
+		s.metrics.acceptedTotal.Add(1)
 		go s.executeJob(context.Background(), job.jobID, reindexJobScope{})
 	}
 	return toAcceptedResponse(job), nil
@@ -103,6 +143,7 @@ func (s *ReindexJobService) SubmitSingleDocumentJob(ctx context.Context, documen
 		return nil, err
 	}
 	if created {
+		s.metrics.acceptedTotal.Add(1)
 		go s.executeJob(context.Background(), job.jobID, reindexJobScope{documentID: &documentID})
 	}
 	return toAcceptedResponse(job), nil
@@ -182,6 +223,9 @@ func (s *ReindexJobService) DeleteJob(jobID string) error {
 		return errors.New("knowledge reindex job cannot be deleted while active")
 	}
 	_, err = s.db.Exec(`delete from knowledge_reindex_jobs where job_id = $1`, jobID)
+	if err == nil {
+		s.metrics.deletedTotal.Add(1)
+	}
 	return err
 }
 
@@ -194,6 +238,7 @@ func (s *ReindexJobService) RetryJob(ctx context.Context, jobID string) (*api.Kn
 	if job.status != "FAILED" {
 		return nil, errors.New("only failed reindex jobs can be retried")
 	}
+	s.metrics.retriedTotal.Add(1)
 	if job.documentID == nil {
 		return s.SubmitAllDocumentsJob(ctx)
 	}
@@ -220,6 +265,7 @@ func (s *ReindexJobService) PurgeExpiredJobs(ctx context.Context) (int64, error)
 	if err != nil {
 		return 0, nil
 	}
+	s.metrics.cleanupDeletedTotal.Add(deleted)
 	return deleted, nil
 }
 
@@ -272,6 +318,7 @@ func (s *ReindexJobService) insertJob(ctx context.Context, documentID *int64) (*
 }
 
 func (s *ReindexJobService) executeJob(ctx context.Context, jobID string, scope reindexJobScope) {
+	startedAt := time.Now()
 	_ = s.markRunning(ctx, jobID)
 
 	var (
@@ -286,9 +333,18 @@ func (s *ReindexJobService) executeJob(ctx context.Context, jobID string, scope 
 
 	if err != nil {
 		_ = s.markFailed(ctx, jobID, err.Error())
+		s.metrics.failedTotal.Add(1)
+		s.recordExecutionDuration(startedAt)
 		return
 	}
 	_ = s.markCompleted(ctx, jobID, result)
+	s.metrics.completedTotal.Add(1)
+	s.recordExecutionDuration(startedAt)
+}
+
+func (s *ReindexJobService) recordExecutionDuration(startedAt time.Time) {
+	s.metrics.executionMillisSum.Add(time.Since(startedAt).Milliseconds())
+	s.metrics.executionSecondsCount.Add(1)
 }
 
 func (s *ReindexJobService) markRunning(ctx context.Context, jobID string) error {
@@ -329,6 +385,13 @@ func (s *ReindexJobService) markFailed(ctx context.Context, jobID string, messag
 		where job_id = $1
 	`, jobID, now, message)
 	return err
+}
+
+func (s *ReindexJobService) MetricsSnapshot() ReindexJobMetricsSnapshot {
+	if s == nil || s.metrics == nil {
+		return ReindexJobMetricsSnapshot{}
+	}
+	return s.metrics.Snapshot()
 }
 
 func (s *ReindexJobService) findJob(ctx context.Context, jobID string) (*reindexJobRecord, error) {

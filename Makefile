@@ -2,9 +2,9 @@ SHELL := /bin/bash
 
 .PHONY: help bootstrap env frontend-env check-openai install-frontend \
 	up up-build down down-volumes logs ps \
-	postgres backend backend-go frontend backend-build backend-go-build frontend-build \
-	test test-backend build build-frontend backend-go-codegen \
-	backend-local frontend-local auth-admin auth-operator
+	postgres backend-go frontend backend-go-build frontend-build \
+	test test-go build build-frontend backend-go-codegen \
+	backend-go-retrieval-eval smoke-go backend-go-local frontend-local auth-admin auth-operator
 
 
 # 初回クローン時に .env 作成と frontend 依存関係インストールをまとめて行う
@@ -60,10 +60,6 @@ ps:
 postgres:
 	docker compose up -d postgres
 
-# backend コンテナだけを起動
-backend:
-	docker compose up -d backend
-
 # Go 版 backend コンテナだけを起動
 backend-go:
 	docker compose up -d backend-go
@@ -71,10 +67,6 @@ backend-go:
 # frontend コンテナだけを起動
 frontend:
 	docker compose up -d frontend
-
-# backend の Docker イメージを再ビルドして起動
-backend-build: check-openai
-	docker compose up -d --build backend
 
 # Go 版 backend の Docker イメージを再ビルドして起動
 backend-go-build:
@@ -84,16 +76,24 @@ backend-go-build:
 backend-go-codegen:
 	cd backend-go && go generate ./internal/api
 
+# Go 版 backend の標準 retrieval seed を投入し、keyword retrieval 評価を実行
+backend-go-retrieval-eval:
+	cd backend-go && go run ./cmd/retrieval-evaluation
+
+# Go-only 構成の主要 API を smoke test する
+smoke-go:
+	bash scripts/go-only-smoke.sh
+
 # frontend の Docker イメージを再ビルドして起動
 frontend-build:
 	docker compose up -d --build frontend
 
-# backend test と frontend build をまとめて実行
-test: test-backend build-frontend
+# Go backend test と frontend build をまとめて実行
+test: test-go build-frontend
 
-# backend のテストを実行
-test-backend:
-	cd backend && ./gradlew test
+# Go backend のテストを実行
+test-go:
+	cd backend-go && go test ./...
 
 # frontend の build を実行
 build: build-frontend
@@ -102,9 +102,9 @@ build: build-frontend
 build-frontend:
 	cd frontend && npm run build
 
-# backend をローカルプロセスとして起動
-backend-local: check-openai
-	set -a && source .env && set +a && cd backend && RAG_VECTOR_SEARCH_ENABLED=$${RAG_VECTOR_SEARCH_ENABLED:-true} ./gradlew bootRun
+# Go backend をローカルプロセスとして起動
+backend-go-local: check-openai
+	set -a && source .env && set +a && cd backend-go && go run ./cmd/server
 
 # frontend をローカル開発サーバーで起動
 frontend-local:
@@ -112,12 +112,12 @@ frontend-local:
 
 # admin ユーザーの JWT を発行
 auth-admin:
-	curl -X POST http://localhost:8080/v1/auth/token \
+	curl -X POST http://localhost:8081/v1/auth/token \
 		-H 'Content-Type: application/json' \
 		-d '{"username":"admin","password":"change-me"}'
 
 # operator ユーザーの JWT を発行
 auth-operator:
-	curl -X POST http://localhost:8080/v1/auth/token \
+	curl -X POST http://localhost:8081/v1/auth/token \
 		-H 'Content-Type: application/json' \
 		-d '{"username":"operator","password":"change-operator"}'

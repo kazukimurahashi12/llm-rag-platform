@@ -36,6 +36,8 @@ type OpenAIConfig struct {
 	APIKey                                string
 	BaseURL                               string
 	DefaultModel                          string
+	USDToJPY                              float64
+	ModelPricing                          map[string]OpenAIModelPricing
 	TimeoutSeconds                        int64
 	ConnectTimeoutSeconds                 int64
 	ReadTimeoutSeconds                    int64
@@ -47,6 +49,12 @@ type OpenAIConfig struct {
 	CircuitBreakerWindowSize              int64
 	CircuitBreakerOpenSeconds             int64
 	CircuitBreakerHalfOpenMaxCalls        int64
+}
+
+// OpenAIModelPricing は 100 万 token あたりのモデル単価を保持する。
+type OpenAIModelPricing struct {
+	InputUSDPer1MTokens  float64
+	OutputUSDPer1MTokens float64
 }
 
 // RAGConfig は Go 版 retrieval の最小設定を保持する。
@@ -101,9 +109,20 @@ func Load() Config {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		OpenAI: OpenAIConfig{
-			APIKey:                                getEnv("OPENAI_API_KEY", ""),
-			BaseURL:                               getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-			DefaultModel:                          getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
+			APIKey:       getEnv("OPENAI_API_KEY", ""),
+			BaseURL:      getEnv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+			DefaultModel: getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
+			USDToJPY:     getEnvFloat64("OPENAI_PRICING_USD_TO_JPY", 150.0),
+			ModelPricing: map[string]OpenAIModelPricing{
+				"gpt-4o": {
+					InputUSDPer1MTokens:  getEnvFloat64("OPENAI_PRICING_GPT_4O_INPUT_USD_PER_1M_TOKENS", 2.50),
+					OutputUSDPer1MTokens: getEnvFloat64("OPENAI_PRICING_GPT_4O_OUTPUT_USD_PER_1M_TOKENS", 10.00),
+				},
+				"gpt-4o-mini": {
+					InputUSDPer1MTokens:  getEnvFloat64("OPENAI_PRICING_GPT_4O_MINI_INPUT_USD_PER_1M_TOKENS", 0.15),
+					OutputUSDPer1MTokens: getEnvFloat64("OPENAI_PRICING_GPT_4O_MINI_OUTPUT_USD_PER_1M_TOKENS", 0.60),
+				},
+			},
 			TimeoutSeconds:                        getEnvInt64("OPENAI_TIMEOUT_SECONDS", 20),
 			ConnectTimeoutSeconds:                 getEnvInt64("OPENAI_CONNECT_TIMEOUT_SECONDS", 3),
 			ReadTimeoutSeconds:                    getEnvInt64("OPENAI_READ_TIMEOUT_SECONDS", 20),

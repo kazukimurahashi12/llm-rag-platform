@@ -18,7 +18,7 @@ Management Support AI "ONBOARD Guide API"
 
 ## 目的
 
-このプロジェクトの目的は、Kotlin / Spring Boot を用いた堅牢なバックエンド開発の土台の上に、
+このプロジェクトの目的は、Go / Echo を主 backend とした運用可能な API 基盤の上に、
 LLM を安全かつ採算が合う形で組み込むことです。
 
 特に以下の課題を解決対象としています。
@@ -53,12 +53,12 @@ LLM を安全かつ採算が合う形で組み込むことです。
 
 ## 現在の実装
 
-現時点では、マネジメントアドバイス生成 API の最小構成を実装しています。
+現時点では、Go 版 backend を正本としてマネジメントアドバイス生成 API と周辺運用 API を実装しています。
 
 - `POST /v1/management/advice`
 - OpenAPI 3.0 ベースで API スキーマを管理
-- OpenAPI Generator により API interface / model を自動生成
-- Spring Boot 3.x + Kotlin で実装
+- Go 側 OpenAPI 正本から oapi-codegen により model を自動生成
+- Go / Echo で実装
 - OpenAI Responses API を呼び出して助言を生成
 - OpenAI 呼び出し層に timeout / retry / circuit breaker を入れ、一時障害時は fail-fast で明確なエラーを返す
 - usage 情報として model / token / estimated cost を返却
@@ -73,16 +73,16 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - retrieval / prompt injection / groundedness の標準評価ケースを持ち、評価 API で回帰確認できる
 - prompt injection guard は日本語パターン追加と正規化強化まで実装済みで、単語単独の文脈判定やスコアリングは今後の改善項目
 - 再インデックスジョブの受付、状態確認、削除、リトライを実装
-- Micrometer / Prometheus 向けに再インデックスジョブのメトリクスを公開
+- Prometheus 向けに Go backend のメトリクスを公開
 - 今後の実装予定として、冪等キー（Idempotency-Key）の導入を検討（拡張予定）
 
 ## 技術スタック
 
-- Language / Framework: Kotlin, Spring Boot 3.x
-- Build: Gradle, OpenAPI Generator
+- Language / Framework: Go, Echo
+- Build: Go modules, oapi-codegen
 - Database: PostgreSQL, pgvector
 - AI / LLM: OpenAI API
-- Observability: Micrometer, Prometheus
+- Observability: Prometheus, Grafana
 - Cache / Rate Limit: Redis（拡張予定）
 
 ## システム構成
@@ -162,17 +162,21 @@ LLM を安全かつ採算が合う形で組み込むことです。
 - `GET /v1/prompt-injection-evaluations/default`
 - `GET /v1/groundedness-evaluations/default`
 
-`backend/src/main/resources/evaluation/groundedness-cases.json` では、取得根拠に沿った回答と、根拠不足で fallback すべき回答を混在させて評価できます。
+Go backend に embed している標準評価ケースでは、取得根拠に沿った回答と、根拠不足で fallback すべき回答を混在させて評価できます。
 
-## Kotlin / Go 差分
+Go 版 backend では、標準 retrieval ケース用の seed を投入して keyword retrieval 評価を実行できます。
 
-`backend/` と `backend-go/` の差分整理は、[kotlin-go-gap-analysis.md](/Users/kazuki/Documents/GitHub/kazukimurahashi12/llm-rag-platform/llm-rag-platform/docs/kotlin-go-gap-analysis.md) にまとめています。
+```bash
+make backend-go-retrieval-eval
+```
 
-2026-06-01 時点では OpenAPI 契約差分は解消済みで、残件は主に以下です。
+## Go 正本化
 
-- retrieval の挙動差分確認
-- reindex job の cleanup / duplicate control / restart recovery
-- chunking と error response の実装差分整理
+現在は Go 版 backend を唯一の実行正本としています。通常の Compose 起動、frontend 接続、Prometheus scrape、Makefile の標準テストは Go 版を対象にしています。
+
+Kotlin 版から Go 版への移行履歴は、[kotlin-go-gap-analysis.md](/Users/kazuki/Documents/GitHub/kazukimurahashi12/llm-rag-platform/docs/kotlin-go-gap-analysis.md) にまとめています。
+
+同一 seed を使った標準 retrieval 評価では、Go 版単体で回帰確認できます。
 
 Knowledge 文書は `aceCategory` を持ちます。
 
@@ -227,7 +231,7 @@ Knowledge 文書は `aceCategory` を持ちます。
 
 ### 前提
 
-- Java 17
+- Go 1.26
 - Node.js 24 系
 - Docker / Docker Compose
 - `OPENAI_API_KEY`
@@ -237,14 +241,12 @@ Knowledge 文書は `aceCategory` を持ちます。
 このリポジトリの `compose.yaml` では、以下のサービスをまとめて起動できます。
 
 - `postgres`
-- `backend`
 - `backend-go`
 - `frontend`
 - `prometheus`
 - `grafana`
 
-`backend` は Kotlin / Spring Boot 版を `8080` で、`backend-go` は Go / Echo 版を `8081` で起動できます。
-Go版は並行移行用の雛形です。
+`backend-go` は Go / Echo 版を `8081` で起動します。
 
 このリポジトリを初めて clone して、ローカルで起動できる状態にする最短手順:
 
@@ -267,7 +269,7 @@ make bootstrap
 OPENAI_API_KEY=your_openai_api_key
 ```
 
-4. Docker Compose で backend / frontend / postgres / prometheus / grafana を起動する
+4. Docker Compose で backend-go / frontend / postgres / prometheus / grafana を起動する
 
 ```bash
 make up-build
@@ -277,7 +279,7 @@ make up-build
 
 ```text
 frontend: http://localhost:5173
-backend: http://localhost:8080
+backend-go: http://localhost:8081
 prometheus: http://localhost:9090
 grafana: http://localhost:3000
 ```
@@ -309,7 +311,7 @@ OPENAI_API_KEY=your_api_key docker compose up -d --build
 起動後のアクセス先:
 
 - frontend: `http://localhost:5173`
-- backend: `http://localhost:8080`
+- backend-go: `http://localhost:8081`
 - postgres: `localhost:5432`
 - prometheus: `http://localhost:9090`
 - grafana: `http://localhost:3000`
@@ -323,15 +325,15 @@ compose で使う既定値:
 - operator: `operator / change-operator`
 - grafana: `admin / admin`
 
-Flyway migration は backend 起動時に適用されます。
-Prometheus は backend の `/actuator/prometheus` を scrape します。
+DB migration は Go backend 起動時に適用済みスキーマを前提にします。既存 Compose では PostgreSQL volume を利用します。
+Prometheus は Go 版 backend の `/metrics` を scrape します。
 Grafana は Prometheus datasource と `ONBOARD Guide API Overview` dashboard を自動 provisioning します。
 
 初回確認:
 
 ```bash
 docker compose ps
-docker compose logs backend
+docker compose logs backend-go
 docker compose logs frontend
 docker compose logs postgres
 docker compose logs prometheus
@@ -358,11 +360,10 @@ PostgreSQL だけ compose で起動:
 docker compose up -d postgres
 ```
 
-backend をローカル起動:
+Go backend をローカル起動:
 
 ```bash
-cd backend
-OPENAI_API_KEY=your_api_key ./gradlew bootRun
+make backend-go-local
 ```
 
 backend の標準 retrieval 設定:
@@ -384,12 +385,12 @@ npm run dev
 
 frontend の既定接続先:
 
-- `VITE_API_BASE_URL=http://localhost:8080`
+- `VITE_API_BASE_URL=http://localhost:8081`
 
 必要に応じて `frontend/.env` を作成し、以下を設定します。
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:8081
 VITE_APP_ENV=local
 ```
 
@@ -401,23 +402,17 @@ make up
 make up-build
 make down
 make test
-make backend-local
+make backend-go-local
 make frontend-local
 make auth-admin
 ```
 
 ### ビルドと検証
 
-backend のコンパイル:
+Go backend のテスト:
 
 ```bash
-cd backend && ./gradlew compileKotlin
-```
-
-backend のテスト:
-
-```bash
-cd backend && ./gradlew test
+cd backend-go && go test ./...
 ```
 
 frontend のビルド:
@@ -439,7 +434,7 @@ npm run build
 まずトークンを発行します。
 
 ```bash
-curl -X POST http://localhost:8080/v1/auth/token \
+curl -X POST http://localhost:8081/v1/auth/token \
   -H 'Content-Type: application/json' \
   -d '{
     "username": "admin",
@@ -452,7 +447,7 @@ curl -X POST http://localhost:8080/v1/auth/token \
 operator トークンを発行する場合:
 
 ```bash
-curl -X POST http://localhost:8080/v1/auth/token \
+curl -X POST http://localhost:8081/v1/auth/token \
   -H 'Content-Type: application/json' \
   -d '{
     "username": "operator",
@@ -472,7 +467,7 @@ curl -X POST http://localhost:8080/v1/auth/token \
 未認証でも `Advice` は呼び出せます。
 
 ```bash
-curl -X POST http://localhost:8080/v1/management/advice \
+curl -X POST http://localhost:8081/v1/management/advice \
   -H 'Content-Type: application/json' \
   -d '{
     "memberContext": {
@@ -489,7 +484,7 @@ curl -X POST http://localhost:8080/v1/management/advice \
 Bearer トークン付きでも呼び出せます。認証付きで呼ぶと、文書 ACL に応じて参照可能なナレッジの範囲が変わります。
 
 ```bash
-curl -X POST http://localhost:8080/v1/management/advice \
+curl -X POST http://localhost:8081/v1/management/advice \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $OPERATOR_TOKEN" \
   -d '{
@@ -517,7 +512,7 @@ curl -X POST http://localhost:8080/v1/management/advice \
 事前に operator トークンを変数へ入れます。
 
 ```bash
-export OPERATOR_TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/token \
+export OPERATOR_TOKEN=$(curl -s -X POST http://localhost:8081/v1/auth/token \
   -H 'Content-Type: application/json' \
   -d '{
     "username": "operator",
@@ -528,14 +523,14 @@ export OPERATOR_TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/token \
 監査ログ一覧を取得する:
 
 ```bash
-curl "http://localhost:8080/v1/audit-logs?limit=20&offset=0" \
+curl "http://localhost:8081/v1/audit-logs?limit=20&offset=0" \
   -H "Authorization: Bearer $OPERATOR_TOKEN"
 ```
 
 監査ログ詳細を取得する:
 
 ```bash
-curl http://localhost:8080/v1/audit-logs/1 \
+curl http://localhost:8081/v1/audit-logs/1 \
   -H "Authorization: Bearer $OPERATOR_TOKEN"
 ```
 
@@ -544,14 +539,14 @@ curl http://localhost:8080/v1/audit-logs/1 \
 Knowledge 一覧を取得する:
 
 ```bash
-curl "http://localhost:8080/v1/knowledge-documents?limit=20&offset=0" \
+curl "http://localhost:8081/v1/knowledge-documents?limit=20&offset=0" \
   -H "Authorization: Bearer $OPERATOR_TOKEN"
 ```
 
 admin で文書を登録する:
 
 ```bash
-curl -X POST http://localhost:8080/v1/knowledge-documents \
+curl -X POST http://localhost:8081/v1/knowledge-documents \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
@@ -567,7 +562,7 @@ curl -X POST http://localhost:8080/v1/knowledge-documents \
 事前に admin トークンを変数へ入れます。
 
 ```bash
-export ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/token \
+export ADMIN_TOKEN=$(curl -s -X POST http://localhost:8081/v1/auth/token \
   -H 'Content-Type: application/json' \
   -d '{
     "username": "admin",
@@ -578,106 +573,86 @@ export ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/token \
 全件再インデックスジョブを受け付ける:
 
 ```bash
-curl -X POST http://localhost:8080/v1/knowledge-documents/reindex \
+curl -X POST http://localhost:8081/v1/knowledge-documents/reindex \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 特定文書だけ再インデックスする:
 
 ```bash
-curl -X POST http://localhost:8080/v1/knowledge-documents/1/reindex \
+curl -X POST http://localhost:8081/v1/knowledge-documents/1/reindex \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 ジョブ状態を確認する:
 
 ```bash
-curl http://localhost:8080/v1/knowledge-documents/reindex-jobs/<jobId> \
+curl http://localhost:8081/v1/knowledge-documents/reindex-jobs/<jobId> \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 ジョブ一覧を期間指定で確認する:
 
 ```bash
-curl "http://localhost:8080/v1/knowledge-documents/reindex-jobs?status=COMPLETED&acceptedFrom=2026-04-15T00:00:00Z&acceptedTo=2026-04-15T23:59:59Z" \
+curl "http://localhost:8081/v1/knowledge-documents/reindex-jobs?status=COMPLETED&acceptedFrom=2026-04-15T00:00:00Z&acceptedTo=2026-04-15T23:59:59Z" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 ジョブ一覧を完了日時の昇順で確認する:
 
 ```bash
-curl "http://localhost:8080/v1/knowledge-documents/reindex-jobs?sortBy=completedAt&sortDirection=asc" \
+curl "http://localhost:8081/v1/knowledge-documents/reindex-jobs?sortBy=completedAt&sortDirection=asc" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 失敗ジョブをリトライする:
 
 ```bash
-curl -X POST http://localhost:8080/v1/knowledge-documents/reindex-jobs/<jobId>/retry \
+curl -X POST http://localhost:8081/v1/knowledge-documents/reindex-jobs/<jobId>/retry \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 完了済みまたは失敗済みジョブを削除する:
 
 ```bash
-curl -X DELETE http://localhost:8080/v1/knowledge-documents/reindex-jobs/<jobId> \
+curl -X DELETE http://localhost:8081/v1/knowledge-documents/reindex-jobs/<jobId> \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 ### メトリクスの確認
 
-Actuator は `health`, `metrics`, `prometheus` を公開しています。
+Go 版 backend は Prometheus scrape 用に `/metrics` を公開しています。
 
 メトリクス名の例:
 
-- `knowledge.reindex.jobs.accepted`
-- `knowledge.reindex.jobs.retried`
-- `knowledge.reindex.jobs.deleted`
-- `knowledge.reindex.jobs.completed`
-- `knowledge.reindex.jobs.failed`
-- `knowledge.reindex.jobs.execution`
-- `knowledge.reindex.jobs.cleanup.deleted`
-- `knowledge.retrieval.vector.accepted`
-- `knowledge.retrieval.vector.threshold.filtered`
-- `knowledge.retrieval.vector.threshold.fallback`
+- `knowledge_reindex_jobs_accepted_total`
+- `knowledge_reindex_jobs_retried_total`
+- `knowledge_reindex_jobs_deleted_total`
+- `knowledge_reindex_jobs_completed_total`
+- `knowledge_reindex_jobs_failed_total`
+- `knowledge_reindex_jobs_execution_seconds_sum`
+- `knowledge_reindex_jobs_cleanup_deleted_total`
+- `knowledge_retrieval_vector_accepted_total`
+- `knowledge_retrieval_vector_threshold_filtered_chunks_total`
+- `knowledge_retrieval_vector_threshold_fallback_total`
 
 retrieval しきい値を調整するときは、以下を見ます。
 
-- `knowledge.retrieval.vector.accepted`
+- `knowledge_retrieval_vector_accepted_total`
   - 最終的に vector 検索が採用された回数
-- `knowledge.retrieval.vector.threshold.filtered`
+- `knowledge_retrieval_vector_threshold_filtered_chunks_total`
   - 類似度しきい値で何件落ちているか
-- `knowledge.retrieval.vector.threshold.fallback`
+- `knowledge_retrieval_vector_threshold_fallback_total`
   - しきい値適用後に vector 0 件となり、keyword fallback へ落ちた回数
 
-`vector.accepted` が低く、`threshold.filtered` または `threshold.fallback` が増え続ける場合は、`rag.min-similarity-score` が厳しすぎる可能性があります。
+`knowledge_retrieval_vector_accepted_total` が低く、threshold 関連の metric が増え続ける場合は、`RAG_MIN_SIMILARITY_SCORE` が厳しすぎる可能性があります。
 
 現在の標準値は `RAG_MIN_SIMILARITY_SCORE=0.4` です。標準評価ケースでは `0.5` に上げると Precision は下がり、fallback も増えやすくなるため、まずは `0.4` を基準に調整します。
-
-`/actuator/metrics` で一覧を確認する:
-
-```bash
-curl http://localhost:8080/actuator/metrics
-```
-
-個別メトリクスを確認する:
-
-```bash
-curl "http://localhost:8080/actuator/metrics/knowledge.reindex.jobs.accepted"
-```
-
-retrieval threshold 関連の個別メトリクスを確認する:
-
-```bash
-curl "http://localhost:8080/actuator/metrics/knowledge.retrieval.vector.accepted"
-curl "http://localhost:8080/actuator/metrics/knowledge.retrieval.vector.threshold.filtered"
-curl "http://localhost:8080/actuator/metrics/knowledge.retrieval.vector.threshold.fallback"
-```
 
 Prometheus 形式で取得する:
 
 ```bash
-curl http://localhost:8080/actuator/prometheus
+curl http://localhost:8081/metrics
 ```
 
 ### Prometheus / Grafana の確認

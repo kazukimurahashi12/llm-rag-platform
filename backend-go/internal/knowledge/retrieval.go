@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -14,10 +15,15 @@ import (
 
 // RetrievalService は Go 版の vector + keyword retrieval を担当する。
 type RetrievalService struct {
-	repository *Repository
+	repository retrievalRepository
 	cfg        config.RAGConfig
 	openAI     *openai.Client
 	metrics    *RetrievalMetrics
+}
+
+type retrievalRepository interface {
+	FindAllChunks(ctx context.Context) ([]ChunkRecord, error)
+	FindNearestChunks(ctx context.Context, queryEmbedding string, limit int) ([]VectorMatch, error)
 }
 
 // RetrievedKnowledge は prompt 用文脈と取得文書をまとめる。
@@ -39,7 +45,7 @@ type RetrievalOptions struct {
 }
 
 // NewRetrievalService は retrieval service を生成する。
-func NewRetrievalService(repository *Repository, cfg config.RAGConfig, openAI *openai.Client, metrics *RetrievalMetrics) *RetrievalService {
+func NewRetrievalService(repository retrievalRepository, cfg config.RAGConfig, openAI *openai.Client, metrics *RetrievalMetrics) *RetrievalService {
 	return &RetrievalService{
 		repository: repository,
 		cfg:        cfg,
@@ -413,7 +419,7 @@ func toVectorLiteral(embedding []float64, expectedDimensions int64) string {
 
 	parts := make([]string, 0, len(embedding))
 	for _, value := range embedding {
-		parts = append(parts, fmt.Sprintf("%f", value))
+		parts = append(parts, strconv.FormatFloat(float64(float32(value)), 'g', -1, 32))
 	}
 
 	return "[" + strings.Join(parts, ",") + "]"

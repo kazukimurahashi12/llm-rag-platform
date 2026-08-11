@@ -190,7 +190,7 @@ func (s *ManagementService) replaceChunksAndEmbeddings(ctx context.Context, docu
 }
 
 func (s *ManagementService) replaceChunksAndEmbeddingsWithCount(ctx context.Context, documentID int64, content string) (int64, int64, error) {
-	chunks := chunkContent(content, 800, 120)
+	chunks := chunkContent(content, 180, 40)
 	chunkIDs, err := s.repository.ReplaceChunks(ctx, documentID, chunks)
 	if err != nil {
 		return 0, 0, err
@@ -215,13 +215,13 @@ func (s *ManagementService) replaceChunksAndEmbeddingsWithCount(ctx context.Cont
 }
 
 func chunkContent(content string, chunkSize int, overlap int) []string {
-	trimmed := strings.TrimSpace(content)
-	if trimmed == "" {
-		return []string{""}
+	normalized := strings.Join(strings.Fields(strings.TrimSpace(content)), " ")
+	if normalized == "" {
+		return []string{}
 	}
-	runes := []rune(trimmed)
+	runes := []rune(normalized)
 	if len(runes) <= chunkSize {
-		return []string{trimmed}
+		return []string{normalized}
 	}
 
 	if overlap < 0 {

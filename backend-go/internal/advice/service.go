@@ -88,6 +88,7 @@ func (s *Service) GenerateAdvice(ctx context.Context, actor Actor, request api.A
 	if err != nil {
 		return nil, err
 	}
+	costJpy := calculateCostJpy(s.cfg.OpenAI, result.Model, result.PromptTokens, result.CompletionTokens)
 
 	groundednessEvaluation, finalAdvice := evaluateGroundedness(
 		ctx,
@@ -113,7 +114,7 @@ func (s *Service) GenerateAdvice(ctx context.Context, actor Actor, request api.A
 			PromptTokens:     result.PromptTokens,
 			CompletionTokens: result.CompletionTokens,
 			TotalTokens:      result.PromptTokens + result.CompletionTokens,
-			EstimatedCostJpy: 0,
+			EstimatedCostJpy: costJpy,
 		},
 		RetrievedDocuments: retrievedKnowledge.Documents,
 	}
@@ -126,7 +127,7 @@ func (s *Service) GenerateAdvice(ctx context.Context, actor Actor, request api.A
 			PromptTokens:                result.PromptTokens,
 			CompletionTokens:            result.CompletionTokens,
 			TotalTokens:                 result.PromptTokens + result.CompletionTokens,
-			CostJpy:                     0,
+			CostJpy:                     costJpy,
 			LatencyMs:                   time.Since(startedAt).Milliseconds(),
 			GroundednessScore:           groundednessEvaluation.GroundednessScore,
 			GroundednessStatus:          string(groundednessEvaluation.Status),

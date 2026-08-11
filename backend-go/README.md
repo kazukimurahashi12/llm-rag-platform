@@ -1,19 +1,16 @@
 # backend-go
 
-Go / Echo 版 backend の並行実装用ディレクトリです。
+Go / Echo 版 backend の実行正本です。
 
 現時点の目的:
-- Kotlin / Spring Boot backend を壊さずに、Go 版を段階的に作る
-- まずは起動基盤、設定、health endpoint から作る
-- 後続で advice、RAG、OpenAI 連携を移植する
+- マネジメントアドバイス API と周辺運用 API を Go 版で提供する
+- Compose / frontend / Prometheus の接続先として Go 版を使う
 
 OpenAPI:
-- `openapi/management-advice-api.yaml` は Kotlin 版 backend の OpenAPI をコピーしたスナップショットです
-- 正本は `backend/src/main/resources/openapi/management-advice-api.yaml` です
-- Kotlin 側の契約を変更した場合は、Go 側スナップショットも同期が必要です
+- `openapi/management-advice-api.yaml` が API 契約の正本です
+- 契約を変更する場合は Go 側正本を更新し、`make backend-go-codegen` で generated model を再作成します
 - generated model を更新するときは `go generate ./internal/api` または root で `make backend-go-codegen` を使います
 - advice prompt は `prompts/management-coach-v1.0.txt` に外出ししています
-- Kotlin / Go の残差分は `docs/kotlin-go-gap-analysis.md` を参照してください
 
 起動:
 

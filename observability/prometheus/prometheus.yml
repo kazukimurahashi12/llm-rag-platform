@@ -3,8 +3,8 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: onboard-backend
-    metrics_path: /actuator/prometheus
+  - job_name: onboard-backend-go
+    metrics_path: /metrics
     static_configs:
       - targets:
-          - backend:8080
+          - backend-go:8081

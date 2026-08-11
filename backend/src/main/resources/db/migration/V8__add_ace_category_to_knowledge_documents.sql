@@ -1,2 +1,0 @@
-ALTER TABLE knowledge_documents
-    ADD COLUMN ace_category VARCHAR(32) NOT NULL DEFAULT 'EXPECTATION';

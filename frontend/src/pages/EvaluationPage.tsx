@@ -113,7 +113,7 @@ export function EvaluationPage() {
 
       <SectionCard
         title="標準評価ケース"
-        description="backend/src/main/resources/evaluation/retrieval-cases.json を現在の retrieval 設定で実行した結果です。"
+        description="Go backend に embed された retrieval-cases.json を現在の retrieval 設定で実行した結果です。"
       >
         {evaluation ? (
           <Stack spacing={2}>
@@ -161,7 +161,7 @@ export function EvaluationPage() {
 
       <SectionCard
         title="Groundedness 評価"
-        description="backend/src/main/resources/evaluation/groundedness-cases.json を使って、judge と fallback 方針の妥当性を確認します。"
+        description="Go backend に embed された groundedness-cases.json を使って、judge と fallback 方針の妥当性を確認します。"
         action={
           <Button
             variant="contained"
@@ -289,7 +289,7 @@ export function EvaluationPage() {
 
       <SectionCard
         title="Prompt Injection 評価"
-        description="backend/src/main/resources/evaluation/prompt-injection-cases.json を使って guard の検知精度を確認します。"
+        description="Go backend に embed された prompt-injection-cases.json を使って guard の検知精度を確認します。"
       >
         {promptInjectionQuery.isLoading ? <LoadingState label="Prompt Injection 評価を実行中..." /> : null}
         {promptInjectionQuery.isError ? <ErrorState message={getApiErrorMessage(promptInjectionQuery.error)} /> : null}

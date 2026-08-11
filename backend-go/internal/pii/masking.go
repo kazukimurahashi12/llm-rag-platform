@@ -12,7 +12,7 @@ type maskingRule struct {
 	replacement string
 }
 
-// NewMaskingService は Kotlin 側と同等の最小マスキングルールを持つ service を返す。
+// NewMaskingService は監査ログ向けの最小マスキングルールを持つ service を返す。
 func NewMaskingService() *MaskingService {
 	return &MaskingService{
 		rules: []maskingRule{

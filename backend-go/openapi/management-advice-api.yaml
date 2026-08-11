@@ -218,7 +218,7 @@ paths:
       operationId: evaluateDefaultRetrievalCases
       summary: 標準評価ケースで Retrieval 品質を評価する
       description: |-
-        classpath 上の evaluation/retrieval-cases.json を読み込み、現在の retrieval 設定で
+        Go backend に embed された retrieval-cases.json を読み込み、現在の retrieval 設定で
         標準評価セットを実行する。
       tags:
         - Evaluation
@@ -321,7 +321,7 @@ paths:
       operationId: evaluateDefaultPromptInjectionCases
       summary: 標準評価ケースで Prompt Injection 検知精度を評価する
       description: |-
-        classpath 上の evaluation/prompt-injection-cases.json を読み込み、
+        Go backend に embed された prompt-injection-cases.json を読み込み、
         現在の prompt injection guard 設定で標準評価セットを実行する。
       tags:
         - Evaluation
@@ -383,7 +383,7 @@ paths:
       operationId: evaluateDefaultGroundednessCases
       summary: 標準 groundedness 評価を実行する
       description: |-
-        classpath 上の evaluation/groundedness-cases.json を読み込み、
+        Go backend に embed された groundedness-cases.json を読み込み、
         groundedness judge と fallback 方針の標準評価セットを実行する。
       tags:
         - Evaluation

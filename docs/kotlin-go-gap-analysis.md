@@ -1,15 +1,15 @@
-# Kotlin / Go 差分一覧
+# Kotlin / Go 移行完了ログ
 
-このドキュメントは、Kotlin / Spring Boot 版 `backend/` と Go / Echo 版 `backend-go/` の実装差分を整理したものです。
-完全リプレイス前に残っている論点を、API 契約差分ではなく実装差分として管理します。
+このドキュメントは、Kotlin / Spring Boot 版 `backend/` から Go / Echo 版 `backend-go/` への移行状況を整理したものです。
+Phase B で Kotlin 実装はこのブランチから物理削除し、Go 版 backend を唯一の実行正本にしました。
+削除前の Kotlin 実装は `archive/kotlin-backend-before-go-only` ブランチで参照できます。
 
 ## 現状
 
-- OpenAPI 正本:
-  - `backend/src/main/resources/openapi/management-advice-api.yaml`
-- Go 側 snapshot:
-  - `backend-go/openapi/management-advice-api.yaml`
-- 2026-06-01 時点では、OpenAPI ファイル差分は解消済みです。
+- OpenAPI 契約:
+  - 正本: `backend-go/openapi/management-advice-api.yaml`
+- generated model は `make backend-go-codegen` で再作成します。
+- 通常の Compose 起動、frontend 接続、Prometheus scrape、Makefile の標準テストは Go 版 backend を対象にしています。
 
 ## 揃っているもの
 
@@ -40,22 +40,32 @@
 - OpenAI timeout / retry / circuit breaker
 - dashboard の OpenAI metrics
 - dashboard の retrieval metrics
+- advice response / audit log の costJpy 計算
+- Kotlin と同じ chunking 設定（chunkSize=180 / overlap=40 / 空白正規化）
+- Prometheus scrape 用 `/metrics`
+- 標準 retrieval ケース用 seed と Go 評価 CLI
 
 ## 残件
 
-### 1. retrieval の挙動差分
+### 1. retrieval の追加確認
 
-- Go 側で `rerankEnabled` は実装済み
-- ただし Kotlin 側と完全に同じ評価結果になる保証はまだない
-- 差分候補:
-  - keyword 抽出の細部
-  - chunking 差分
-  - lexical rerank score の効き方
+- 標準 seed + keyword retrieval 条件では、Go / Kotlin の集計値と `retrievedDocumentTitles` は一致確認済み
+- vector search enabled 条件でも、同一 DB / 同一 seed に対して Go / Kotlin の主要集計は概ね一致確認済み
+  - `totalCases`: 12 / 12
+  - `matchedCases`: 12 / 12
+  - `hitRate`: 1.0 / 1.0
+  - `averageRecallAtK`: 0.9583333333333334 / 0.9583333333333334
+  - `averagePrecisionAtK`: 0.6388888888888888 / 0.6388888888888888
+  - `averageRetrievedCount`: 2.75 / 2.75
+- vector search enabled 条件では一部ケースの順位だけ差分があります
+  - Go: `meanReciprocalRank = 1.0`
+  - Kotlin: `meanReciprocalRank = 0.9583333333333334`
+  - 差分ケースでは Go 側の方が期待文書を上位に返しており、Kotlin 削除の blocker ではありません
 
 対応方針:
-- 同一ケースで Kotlin / Go の comparison API を並べて、主要 variant の数値差分を継続確認する
+- embedding を含む比較は OpenAI API 状態に依存するため、完全同順位ではなく主要指標と期待文書 hit を削除判断基準にする
 
-### 2. dashboard の集計差分
+### 2. dashboard / metrics の集計差分
 
 Go 側で以下は実装済みです。
 
@@ -68,11 +78,11 @@ Go 側で以下は実装済みです。
 - `openAiCircuitOpenTransitions`
 - `openAiCircuitState`
 
-ただし以下はまだ差分候補です。
+Go 側は `/metrics` を公開し、Compose の Prometheus は Go 版 backend を scrape します。
+Kotlin 削除後の運用確認では以下を見る対象にします。
 
-- Kotlin 側 Micrometer 指標との完全一致
 - 再起動後の metrics 初期化タイミング
-- Prometheus / Grafana への外部公開方式
+- Grafana dashboard の実機表示確認
 
 ### 3. reindex job の運用差分
 
@@ -84,15 +94,10 @@ Go 側は `knowledge_reindex_jobs` テーブルへ永続化済みで、以下も
 
 残る論点は、cleanup 削除件数の外部メトリクス化や restart policy の細部調整です。
 
-### 4. chunking 実装差分
+### 4. chunking 実装
 
-Go 側の chunking は固定長ベースです。
-
-- file:
-  - `backend-go/internal/knowledge/manage.go`
-
-Kotlin 側の chunking と完全一致まではまだ確認していません。
-この差分は retrieval 品質にも影響します。
+Go 側の chunking は Kotlin と同じ `chunkSize=180 / overlap=40`、空白正規化、空入力 0 chunk の仕様へ寄せています。
+標準 seed + keyword retrieval 条件では、retrieval 評価値も Kotlin と一致確認済みです。
 
 ### 5. error response の文言差分
 
@@ -102,30 +107,46 @@ Spring 側と Echo 側で、HTTP status はほぼ揃っていますが、以下�
 - `details`
 - validation error の粒度
 
-frontend は現状動いていますが、完全置換前に contract test で潰す価値があります。
+Go 側では validation / invalid body / 認証 / 権限 error response の contract test を追加済みです。
+Kotlin 固有例外の細かな `details` 粒度への完全一致は削除判断の対象外とし、Go 側 contract を正とします。
 
 ### 6. Go 側だけの補助 endpoint
 
-Go 側には Kotlin OpenAPI にない補助 endpoint があります。
+Go 側には正本 OpenAPI に含めていない補助 endpoint があります。
 
 - `GET /health`
 - `GET /version`
 - `GET /v1/auth/me`
 
-これらは運用上は便利ですが、正本 OpenAPI には含めていません。
-必要なら Kotlin 側も含めて共通契約へ昇格させるか、補助 API として扱いを明記する必要があります。
+frontend はこれらの補助 endpoint を直接参照していません。
+削除前確認では、`GET /health` は Go-only smoke の対象、`GET /version` と `GET /v1/auth/me` は Go 版の運用補助 API として残す判断です。
+正本 OpenAPI には現時点では含めず、公開 API ではなく運用補助 API として扱います。
 
 ## 優先順位
 
-1. retrieval comparison の Kotlin / Go 差分確認
-2. error response 差分の contract test 化
-3. chunking 差分の評価
-4. 補助 endpoint の契約扱い整理
+1. Go-only 構成での継続的な smoke / regression
+2. Agent orchestration 層の設計・実装
+
+## Kotlin 削除前チェック結果
+
+2026-08-09 時点で、Kotlin 物理削除前の確認項目は以下です。
+
+- Grafana / Prometheus
+  - Prometheus target は `backend-go:8081/metrics` で `up`
+  - Grafana datasource は `http://prometheus:9090`
+  - dashboard は provision 済み
+- vector retrieval
+  - Go / Kotlin とも `matchedCases = 12`, `hitRate = 1.0`
+  - 一部順位差はあるが、Go 側の MRR が高く品質退行ではない
+- 補助 endpoint
+  - frontend 依存なし
+  - `GET /health` は smoke で担保
+  - `GET /version`, `GET /v1/auth/me` は Go 版運用補助 API として残す
 
 ## 完全リプレイス判断
 
-2026-06-01 時点では、Go 側は主要機能をほぼカバーしています。
-残っているのは「API がない」より「同じ API の挙動や運用完成度を詰める」フェーズです。
+Go 側は主要機能をカバーしており、Phase B で Go 版を唯一の実行正本にしました。
+残っているのは「Kotlin との差分解消」ではなく、Go 版としての運用改善です。
 
 したがって、完全リプレイスの残件は以下の性質です。
 
