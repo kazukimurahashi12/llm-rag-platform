@@ -25,7 +25,12 @@ export function getStoredAuthSession(): StoredAuthSession | null {
 
   try {
     const parsed = JSON.parse(stored) as StoredAuthSession;
-    if (!parsed.username || !parsed.accessToken || !parsed.expiresAt || !Array.isArray(parsed.roles)) {
+    if (
+      !parsed.username ||
+      !parsed.accessToken ||
+      !parsed.expiresAt ||
+      !Array.isArray(parsed.roles)
+    ) {
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
       return null;
     }

@@ -1,0 +1,9 @@
+pre-commit:
+  commands:
+    fast-check:
+      run: make fast-check
+
+pre-push:
+  commands:
+    verify:
+      run: make verify

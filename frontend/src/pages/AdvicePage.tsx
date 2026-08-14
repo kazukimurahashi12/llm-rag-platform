@@ -1,10 +1,7 @@
 import PsychologyRoundedIcon from "@mui/icons-material/PsychologyRounded";
 import SourceRoundedIcon from "@mui/icons-material/SourceRounded";
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
-import {
-  Alert,
-  Grid,
-} from "@mui/material";
+import { Alert, Grid } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { generateAdvice } from "../api/advice";
@@ -88,9 +85,17 @@ export function AdvicePage() {
       >
         {mutation.isError ? <ErrorState message={getApiErrorMessage(mutation.error)} /> : null}
         {formValue.model === "gpt-4o" ? (
-          <Alert severity="info">MVPデモでは低コストな `gpt-4o-mini` を推奨します。高品質重視の確認時のみ `gpt-4o` を使用してください。</Alert>
+          <Alert severity="info">
+            MVPデモでは低コストな `gpt-4o-mini` を推奨します。高品質重視の確認時のみ `gpt-4o`
+            を使用してください。
+          </Alert>
         ) : null}
-        <AdviceForm value={formValue} onChange={setFormValue} onSubmit={() => mutation.mutate()} loading={mutation.isPending} />
+        <AdviceForm
+          value={formValue}
+          onChange={setFormValue}
+          onSubmit={() => mutation.mutate()}
+          loading={mutation.isPending}
+        />
       </SectionCard>
 
       {!hasResult && !mutation.isPending ? (

@@ -8,9 +8,12 @@ import {
 } from "../types/api";
 
 export async function fetchDefaultRetrievalEvaluation(topK = 3) {
-  const response = await apiClient.get<RetrievalEvaluationResponse>("/v1/retrieval-evaluations/default", {
-    params: { topK },
-  });
+  const response = await apiClient.get<RetrievalEvaluationResponse>(
+    "/v1/retrieval-evaluations/default",
+    {
+      params: { topK },
+    },
+  );
   return response.data;
 }
 
@@ -23,7 +26,9 @@ export async function compareRetrievalEvaluations(payload: RetrievalEvaluationCo
 }
 
 export async function fetchDefaultPromptInjectionEvaluation() {
-  const response = await apiClient.get<PromptInjectionEvaluationResponse>("/v1/prompt-injection-evaluations/default");
+  const response = await apiClient.get<PromptInjectionEvaluationResponse>(
+    "/v1/prompt-injection-evaluations/default",
+  );
   return response.data;
 }
 

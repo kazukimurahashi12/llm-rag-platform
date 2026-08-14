@@ -29,7 +29,9 @@ export function DashboardPage() {
       description="リクエスト量、検索利用状況、再インデックス実行状況を簡易的に俯瞰します。"
     >
       {summaryQuery.isLoading ? <LoadingState label="ダッシュボード集計を読み込み中..." /> : null}
-      {summaryQuery.isError ? <ErrorState message={getApiErrorMessage(summaryQuery.error)} /> : null}
+      {summaryQuery.isError ? (
+        <ErrorState message={getApiErrorMessage(summaryQuery.error)} />
+      ) : null}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 3 }}>
           <MetricCard
@@ -201,12 +203,28 @@ export function DashboardPage() {
         description="監査ログ、ナレッジ、再インデックスジョブ、retrieval metrics から主要 KPI を集計して表示します。"
       >
         <Stack spacing={1}>
-          <Typography color="text.secondary">総リクエスト数、平均レイテンシ、平均コストは `audit_logs` から集計しています。</Typography>
-          <Typography color="text.secondary">groundedness は advice 生成後の judge 結果を `audit_logs` へ保存し、その平均値と件数を集計しています。</Typography>
-          <Typography color="text.secondary">fallback 件数は `NO_EVIDENCE` または極端に低い `LOW_GROUNDEDNESS` により保守的な定型応答へ切り替わった回数です。</Typography>
-          <Typography color="text.secondary">再インデックス成功率は `knowledge_reindex_jobs` の `COMPLETED` と `FAILED` から算出しています。</Typography>
-          <Typography color="text.secondary">ナレッジ文書と chunk 数は RAG の検索対象データ量を示します。</Typography>
-          <Typography color="text.secondary">Vector 採用と threshold fallback はアプリ起動後の Micrometer counter から取得しています。</Typography>
+          <Typography color="text.secondary">
+            総リクエスト数、平均レイテンシ、平均コストは `audit_logs` から集計しています。
+          </Typography>
+          <Typography color="text.secondary">
+            groundedness は advice 生成後の judge 結果を `audit_logs`
+            へ保存し、その平均値と件数を集計しています。
+          </Typography>
+          <Typography color="text.secondary">
+            fallback 件数は `NO_EVIDENCE` または極端に低い `LOW_GROUNDEDNESS`
+            により保守的な定型応答へ切り替わった回数です。
+          </Typography>
+          <Typography color="text.secondary">
+            再インデックス成功率は `knowledge_reindex_jobs` の `COMPLETED` と `FAILED`
+            から算出しています。
+          </Typography>
+          <Typography color="text.secondary">
+            ナレッジ文書と chunk 数は RAG の検索対象データ量を示します。
+          </Typography>
+          <Typography color="text.secondary">
+            Vector 採用と threshold fallback はアプリ起動後の Micrometer counter
+            から取得しています。
+          </Typography>
         </Stack>
       </SectionCard>
     </PageScaffold>

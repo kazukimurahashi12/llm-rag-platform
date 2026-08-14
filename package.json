@@ -1,0 +1,7 @@
+{
+  "name": "llm-rag-platform-harness",
+  "private": true,
+  "devDependencies": {
+    "lefthook": "2.1.10"
+  }
+}

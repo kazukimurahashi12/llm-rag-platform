@@ -37,9 +37,7 @@ apiClient.interceptors.response.use(
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     return (
-      error.response?.data?.message ??
-      error.response?.data?.details?.join(", ") ??
-      error.message
+      error.response?.data?.message ?? error.response?.data?.details?.join(", ") ?? error.message
     );
   }
 

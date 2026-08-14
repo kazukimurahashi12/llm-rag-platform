@@ -22,41 +22,41 @@ export function RetrievedDocumentList({ items }: { items: RetrievedDocument[] })
         const [firstChunk] = documentChunks;
 
         return (
-        <Card key={documentId} variant="outlined">
-          <CardContent>
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <MenuBookRoundedIcon color="primary" fontSize="small" />
-                <Typography fontWeight={700}>{firstChunk.title}</Typography>
-                {firstChunk.aceCategory ? <StatusBadge status={firstChunk.aceCategory} /> : null}
-              </Stack>
-              <Typography color="text.secondary" variant="body2">
-                この文書から {documentChunks.length} 件のチャンクが参照されています。
-              </Typography>
-              <Stack spacing={1.5}>
-                {documentChunks.map((item, index) => (
-                  <Stack key={`${item.id}-${item.chunkIndex}`} spacing={1}>
-                    {index > 0 ? <Divider /> : null}
-                    <Typography color="text.secondary">
-                      {formatChunkExcerpt(documentChunks, index)}
-                    </Typography>
-                    <Stack direction="row" spacing={2}>
-                      <Typography variant="body2" color="text.secondary">
-                        チャンク #{item.chunkIndex}
+          <Card key={documentId} variant="outlined">
+            <CardContent>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <MenuBookRoundedIcon color="primary" fontSize="small" />
+                  <Typography fontWeight={700}>{firstChunk.title}</Typography>
+                  {firstChunk.aceCategory ? <StatusBadge status={firstChunk.aceCategory} /> : null}
+                </Stack>
+                <Typography color="text.secondary" variant="body2">
+                  この文書から {documentChunks.length} 件のチャンクが参照されています。
+                </Typography>
+                <Stack spacing={1.5}>
+                  {documentChunks.map((item, index) => (
+                    <Stack key={`${item.id}-${item.chunkIndex}`} spacing={1}>
+                      {index > 0 ? <Divider /> : null}
+                      <Typography color="text.secondary">
+                        {formatChunkExcerpt(documentChunks, index)}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        類似度 {formatNumber(item.similarityScore, 3)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        距離 {formatNumber(item.distanceScore, 3)}
-                      </Typography>
+                      <Stack direction="row" spacing={2}>
+                        <Typography variant="body2" color="text.secondary">
+                          チャンク #{item.chunkIndex}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          類似度 {formatNumber(item.similarityScore, 3)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          距離 {formatNumber(item.distanceScore, 3)}
+                        </Typography>
+                      </Stack>
                     </Stack>
-                  </Stack>
-                ))}
+                  ))}
+                </Stack>
               </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         );
       })}
     </Stack>

@@ -21,7 +21,9 @@ export function PageScaffold({ title, description, rightPanel, children }: PageS
         sx={{
           display: "grid",
           gap: 2.5,
-          gridTemplateColumns: rightPanel ? "minmax(0, 1.7fr) minmax(360px, 1fr)" : "minmax(0, 1fr)",
+          gridTemplateColumns: rightPanel
+            ? "minmax(0, 1.7fr) minmax(360px, 1fr)"
+            : "minmax(0, 1fr)",
           alignItems: "start",
         }}
       >

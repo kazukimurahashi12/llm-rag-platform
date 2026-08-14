@@ -17,7 +17,13 @@ import {
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { createKnowledgeDocument, fetchKnowledgeDocuments, reindexAllDocuments, reindexDocument, updateKnowledgeDocument } from "../api/knowledge";
+import {
+  createKnowledgeDocument,
+  fetchKnowledgeDocuments,
+  reindexAllDocuments,
+  reindexDocument,
+  updateKnowledgeDocument,
+} from "../api/knowledge";
 import { getApiErrorMessage } from "../api/client";
 import { PageScaffold } from "../components/layout/PageScaffold";
 import { EmptyState, ErrorState, LoadingState } from "../components/shared/FeedbackState";
@@ -29,7 +35,9 @@ export function KnowledgePage() {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [aceCategory, setAceCategory] = useState<"ABILITY" | "CULTURE" | "EXPECTATION">("EXPECTATION");
+  const [aceCategory, setAceCategory] = useState<"ABILITY" | "CULTURE" | "EXPECTATION">(
+    "EXPECTATION",
+  );
   const [accessScope, setAccessScope] = useState<"SHARED" | "ADMIN_ONLY">("SHARED");
   const [editingDocumentId, setEditingDocumentId] = useState<number | null>(null);
 
@@ -39,7 +47,8 @@ export function KnowledgePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createKnowledgeDocument({ title, content, aceCategory, accessScope, allowedUsernames: [] }),
+    mutationFn: () =>
+      createKnowledgeDocument({ title, content, aceCategory, accessScope, allowedUsernames: [] }),
     onSuccess: async () => {
       setTitle("");
       setContent("");
@@ -53,7 +62,13 @@ export function KnowledgePage() {
       if (editingDocumentId == null) {
         throw new Error("更新対象の文書 ID がありません");
       }
-      return updateKnowledgeDocument(editingDocumentId, { title, content, aceCategory, accessScope, allowedUsernames: [] });
+      return updateKnowledgeDocument(editingDocumentId, {
+        title,
+        content,
+        aceCategory,
+        accessScope,
+        allowedUsernames: [],
+      });
     },
     onSuccess: async () => {
       resetForm();
@@ -105,23 +120,50 @@ export function KnowledgePage() {
           </Stack>
         }
       >
-        {createMutation.isError ? <ErrorState message={getApiErrorMessage(createMutation.error)} /> : null}
+        {createMutation.isError ? (
+          <ErrorState message={getApiErrorMessage(createMutation.error)} />
+        ) : null}
         {createMutation.isSuccess ? <Alert severity="success">文書を登録しました。</Alert> : null}
-        {updateMutation.isError ? <ErrorState message={getApiErrorMessage(updateMutation.error)} /> : null}
-        {updateMutation.isSuccess ? <Alert severity="success">文書を更新しました。chunk と embedding も再生成済みです。</Alert> : null}
+        {updateMutation.isError ? (
+          <ErrorState message={getApiErrorMessage(updateMutation.error)} />
+        ) : null}
+        {updateMutation.isSuccess ? (
+          <Alert severity="success">
+            文書を更新しました。chunk と embedding も再生成済みです。
+          </Alert>
+        ) : null}
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth label="タイトル" value={title} onChange={(event) => setTitle(event.target.value)} />
+            <TextField
+              fullWidth
+              label="タイトル"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField select fullWidth label="ACE分類" value={aceCategory} onChange={(event) => setAceCategory(event.target.value as "ABILITY" | "CULTURE" | "EXPECTATION")}>
+            <TextField
+              select
+              fullWidth
+              label="ACE分類"
+              value={aceCategory}
+              onChange={(event) =>
+                setAceCategory(event.target.value as "ABILITY" | "CULTURE" | "EXPECTATION")
+              }
+            >
               <MenuItem value="ABILITY">Ability</MenuItem>
               <MenuItem value="CULTURE">Culture</MenuItem>
               <MenuItem value="EXPECTATION">Expectation</MenuItem>
             </TextField>
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField select fullWidth label="公開範囲" value={accessScope} onChange={(event) => setAccessScope(event.target.value as "SHARED" | "ADMIN_ONLY")}>
+            <TextField
+              select
+              fullWidth
+              label="公開範囲"
+              value={accessScope}
+              onChange={(event) => setAccessScope(event.target.value as "SHARED" | "ADMIN_ONLY")}
+            >
               <MenuItem value="SHARED">共有</MenuItem>
               <MenuItem value="ADMIN_ONLY">管理者のみ</MenuItem>
             </TextField>
@@ -153,13 +195,22 @@ export function KnowledgePage() {
           </Button>
         }
       >
-        {fullReindexMutation.isSuccess ? <Alert severity="success">全件再インデックスを受け付けました。</Alert> : null}
-        {fullReindexMutation.isError ? <ErrorState message={getApiErrorMessage(fullReindexMutation.error)} /> : null}
-        {singleReindexMutation.isError ? <ErrorState message={getApiErrorMessage(singleReindexMutation.error)} /> : null}
+        {fullReindexMutation.isSuccess ? (
+          <Alert severity="success">全件再インデックスを受け付けました。</Alert>
+        ) : null}
+        {fullReindexMutation.isError ? (
+          <ErrorState message={getApiErrorMessage(fullReindexMutation.error)} />
+        ) : null}
+        {singleReindexMutation.isError ? (
+          <ErrorState message={getApiErrorMessage(singleReindexMutation.error)} />
+        ) : null}
         {listQuery.isLoading ? <LoadingState label="ナレッジ文書を読み込み中..." /> : null}
         {listQuery.isError ? <ErrorState message={getApiErrorMessage(listQuery.error)} /> : null}
         {listQuery.data && listQuery.data.items.length === 0 ? (
-          <EmptyState title="ナレッジ文書がありません" body="最初の文書を登録すると、検索・根拠表示の動作を確認できます。" />
+          <EmptyState
+            title="ナレッジ文書がありません"
+            body="最初の文書を登録すると、検索・根拠表示の動作を確認できます。"
+          />
         ) : null}
         {listQuery.data ? (
           <Table>

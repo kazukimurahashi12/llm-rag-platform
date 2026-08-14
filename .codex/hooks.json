@@ -1,0 +1,30 @@
+{
+  "description": "Repository-local AI Harness hooks for fast and strong verification.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/post_tool_use_fast_check.py\"",
+            "timeout": 120,
+            "statusMessage": "Running AI Harness fast-check"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/stop_verify.py\"",
+            "timeout": 600,
+            "statusMessage": "Running AI Harness verify"
+          }
+        ]
+      }
+    ]
+  }
+}

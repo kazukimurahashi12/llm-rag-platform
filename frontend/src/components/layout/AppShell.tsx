@@ -35,7 +35,8 @@ const sidebarWidth = 252;
 
 export function AppShell() {
   const location = useLocation();
-  const currentPage = navigationItems.find((item) => location.pathname.startsWith(item.path))?.label ?? "助言生成";
+  const currentPage =
+    navigationItems.find((item) => location.pathname.startsWith(item.path))?.label ?? "助言生成";
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>

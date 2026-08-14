@@ -17,7 +17,9 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
           <SmartToyOutlinedIcon color="primary" />
           <div>
             <Typography variant="h6">AIワークスペース</Typography>
-            <Typography color="text.secondary">助言を生成すると、回答・根拠・使用量をここで確認できます。</Typography>
+            <Typography color="text.secondary">
+              助言を生成すると、回答・根拠・使用量をここで確認できます。
+            </Typography>
           </div>
         </Stack>
       </Stack>
@@ -52,8 +54,14 @@ export function AdviceResponsePanel({ data }: AdviceResponsePanelProps) {
         <Typography variant="subtitle1">Groundedness</Typography>
         <Stack direction="row" flexWrap="wrap" gap={1}>
           <UsagePill label="判定" value={data.groundednessEvaluation.status} />
-          <UsagePill label="スコア" value={formatNumber(data.groundednessEvaluation.groundednessScore, 2)} />
-          <UsagePill label="Fallback" value={data.groundednessEvaluation.fallbackApplied ? "APPLIED" : "NONE"} />
+          <UsagePill
+            label="スコア"
+            value={formatNumber(data.groundednessEvaluation.groundednessScore, 2)}
+          />
+          <UsagePill
+            label="Fallback"
+            value={data.groundednessEvaluation.fallbackApplied ? "APPLIED" : "NONE"}
+          />
         </Stack>
         <Typography color="text.secondary">{data.groundednessEvaluation.reason}</Typography>
         {data.groundednessEvaluation.fallbackApplied ? (

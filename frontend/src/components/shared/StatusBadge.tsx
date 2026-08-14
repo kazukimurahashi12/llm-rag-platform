@@ -35,5 +35,12 @@ const labelMap: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  return <Chip color={colorMap[status] ?? "default"} label={labelMap[status] ?? status} size="small" variant="filled" />;
+  return (
+    <Chip
+      color={colorMap[status] ?? "default"}
+      label={labelMap[status] ?? status}
+      size="small"
+      variant="filled"
+    />
+  );
 }

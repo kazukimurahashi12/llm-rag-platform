@@ -4,7 +4,8 @@ SHELL := /bin/bash
 	up up-build down down-volumes logs ps \
 	postgres backend-go agent-runtime frontend backend-go-build agent-runtime-build frontend-build \
 	test test-go build build-frontend build-agent-runtime backend-go-codegen \
-	backend-go-retrieval-eval smoke-go backend-go-local agent-runtime-local frontend-local auth-admin auth-operator
+	backend-go-retrieval-eval smoke-go fast-check verify \
+	backend-go-local agent-runtime-local frontend-local auth-admin auth-operator
 
 
 # 初回クローン時に .env 作成と frontend 依存関係インストールをまとめて行う
@@ -99,6 +100,14 @@ frontend-build:
 
 # Go backend test と frontend / agent-runtime build をまとめて実行
 test: test-go build-agent-runtime build-frontend
+
+# AI Harness の高速検査。PostToolUse / pre-commit から再利用する
+fast-check:
+	bash scripts/harness/fast-check.sh
+
+# AI Harness の強検証。Stop Hook / pre-push / CI から再利用する
+verify:
+	bash scripts/harness/verify.sh
 
 # Go backend のテストを実行
 test-go:

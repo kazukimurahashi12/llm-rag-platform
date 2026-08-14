@@ -82,7 +82,13 @@ export function AdviceForm({ value, onChange, onSubmit, loading }: AdviceFormPro
             ))}
           </TextField>
         </Stack>
-        <Button size="large" variant="contained" type="submit" startIcon={<AutoAwesomeRoundedIcon />} disabled={loading}>
+        <Button
+          size="large"
+          variant="contained"
+          type="submit"
+          startIcon={<AutoAwesomeRoundedIcon />}
+          disabled={loading}
+        >
           {loading ? "生成中..." : "助言を生成"}
         </Button>
       </Stack>

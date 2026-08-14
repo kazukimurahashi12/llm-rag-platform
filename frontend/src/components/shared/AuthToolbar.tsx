@@ -25,7 +25,9 @@ export function AuthToolbar() {
   return (
     <Stack direction="row" spacing={1.5} alignItems="center">
       <Stack direction="row" spacing={1.25} alignItems="center">
-        <Avatar sx={{ bgcolor: "rgba(65, 168, 98, 0.16)", color: "primary.dark" }}>{label[0]?.toUpperCase()}</Avatar>
+        <Avatar sx={{ bgcolor: "rgba(65, 168, 98, 0.16)", color: "primary.dark" }}>
+          {label[0]?.toUpperCase()}
+        </Avatar>
         <div>
           <Typography fontWeight={700}>{label}</Typography>
         </div>

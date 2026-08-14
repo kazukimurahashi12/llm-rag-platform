@@ -89,11 +89,18 @@ export function EvaluationPage() {
       description="標準評価セットを使って、RAG が期待文書を取得できているかを確認します。"
     >
       {defaultEvaluationQuery.isLoading ? <LoadingState label="Retrieval 評価を実行中..." /> : null}
-      {defaultEvaluationQuery.isError ? <ErrorState message={getApiErrorMessage(defaultEvaluationQuery.error)} /> : null}
+      {defaultEvaluationQuery.isError ? (
+        <ErrorState message={getApiErrorMessage(defaultEvaluationQuery.error)} />
+      ) : null}
 
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="Hit Rate" value={formatPercent(evaluation?.hitRate)} helper="期待文書を1件以上拾えた割合" icon={<InsightsRoundedIcon color="primary" />} />
+          <MetricCard
+            label="Hit Rate"
+            value={formatPercent(evaluation?.hitRate)}
+            helper="期待文書を1件以上拾えた割合"
+            icon={<InsightsRoundedIcon color="primary" />}
+          />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
           <MetricCard
@@ -104,10 +111,20 @@ export function EvaluationPage() {
           />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="Recall@K" value={formatPercent(evaluation?.averageRecallAtK)} helper={`topK=${evaluation?.topK ?? "-"}`} icon={<ChecklistRoundedIcon color="primary" />} />
+          <MetricCard
+            label="Recall@K"
+            value={formatPercent(evaluation?.averageRecallAtK)}
+            helper={`topK=${evaluation?.topK ?? "-"}`}
+            icon={<ChecklistRoundedIcon color="primary" />}
+          />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <MetricCard label="Precision@K" value={formatPercent(evaluation?.averagePrecisionAtK)} helper="取得結果に期待文書がどれだけ含まれるか" icon={<PrecisionManufacturingRoundedIcon color="primary" />} />
+          <MetricCard
+            label="Precision@K"
+            value={formatPercent(evaluation?.averagePrecisionAtK)}
+            helper="取得結果に期待文書がどれだけ含まれるか"
+            icon={<PrecisionManufacturingRoundedIcon color="primary" />}
+          />
         </Grid>
       </Grid>
 
@@ -118,7 +135,8 @@ export function EvaluationPage() {
         {evaluation ? (
           <Stack spacing={2}>
             <Alert severity="info">
-              {evaluation.totalCases} ケース中 {evaluation.matchedCases} ケースが hit。平均取得件数は {formatNumber(evaluation.averageRetrievedCount, 1)} 件です。
+              {evaluation.totalCases} ケース中 {evaluation.matchedCases} ケースが
+              hit。平均取得件数は {formatNumber(evaluation.averageRetrievedCount, 1)} 件です。
             </Alert>
             <Table>
               <TableHead>
@@ -173,8 +191,12 @@ export function EvaluationPage() {
           </Button>
         }
       >
-        {groundednessMutation.isPending ? <LoadingState label="Groundedness 評価を実行中..." /> : null}
-        {groundednessMutation.isError ? <ErrorState message={getApiErrorMessage(groundednessMutation.error)} /> : null}
+        {groundednessMutation.isPending ? (
+          <LoadingState label="Groundedness 評価を実行中..." />
+        ) : null}
+        {groundednessMutation.isError ? (
+          <ErrorState message={getApiErrorMessage(groundednessMutation.error)} />
+        ) : null}
         {groundednessEvaluation ? (
           <Stack spacing={2.5}>
             <Grid container spacing={2.5}>
@@ -240,8 +262,10 @@ export function EvaluationPage() {
             </Grid>
 
             <Alert severity="info">
-              {groundednessEvaluation.totalCases} ケース中 {groundednessEvaluation.matchedCases} ケースが期待どおり。
-              GROUNDED {groundednessEvaluation.groundedCases} 件 / LOW {groundednessEvaluation.lowGroundednessCases} 件 / NO_EVIDENCE {groundednessEvaluation.noEvidenceCases} 件。
+              {groundednessEvaluation.totalCases} ケース中 {groundednessEvaluation.matchedCases}{" "}
+              ケースが期待どおり。 GROUNDED {groundednessEvaluation.groundedCases} 件 / LOW{" "}
+              {groundednessEvaluation.lowGroundednessCases} 件 / NO_EVIDENCE{" "}
+              {groundednessEvaluation.noEvidenceCases} 件。
             </Alert>
 
             <Table>
@@ -291,8 +315,12 @@ export function EvaluationPage() {
         title="Prompt Injection 評価"
         description="Go backend に embed された prompt-injection-cases.json を使って guard の検知精度を確認します。"
       >
-        {promptInjectionQuery.isLoading ? <LoadingState label="Prompt Injection 評価を実行中..." /> : null}
-        {promptInjectionQuery.isError ? <ErrorState message={getApiErrorMessage(promptInjectionQuery.error)} /> : null}
+        {promptInjectionQuery.isLoading ? (
+          <LoadingState label="Prompt Injection 評価を実行中..." />
+        ) : null}
+        {promptInjectionQuery.isError ? (
+          <ErrorState message={getApiErrorMessage(promptInjectionQuery.error)} />
+        ) : null}
         {promptInjectionEvaluation ? (
           <Stack spacing={2.5}>
             <Grid container spacing={2.5}>
@@ -323,8 +351,10 @@ export function EvaluationPage() {
             </Grid>
 
             <Alert severity="info">
-              block 期待 {promptInjectionEvaluation.expectedBlockedCases} ケース中 {promptInjectionEvaluation.correctlyBlockedCases} ケースを検知。
-              allow 期待 {promptInjectionEvaluation.expectedAllowedCases} ケース中 {promptInjectionEvaluation.correctlyAllowedCases} ケースを通過。
+              block 期待 {promptInjectionEvaluation.expectedBlockedCases} ケース中{" "}
+              {promptInjectionEvaluation.correctlyBlockedCases} ケースを検知。 allow 期待{" "}
+              {promptInjectionEvaluation.expectedAllowedCases} ケース中{" "}
+              {promptInjectionEvaluation.correctlyAllowedCases} ケースを通過。
             </Alert>
 
             <Table>
@@ -376,7 +406,9 @@ export function EvaluationPage() {
           </Button>
         }
       >
-        {comparisonMutation.isError ? <ErrorState message={getApiErrorMessage(comparisonMutation.error)} /> : null}
+        {comparisonMutation.isError ? (
+          <ErrorState message={getApiErrorMessage(comparisonMutation.error)} />
+        ) : null}
         {comparisonMutation.isPending ? <LoadingState label="比較評価を実行中..." /> : null}
         {comparisonMutation.data ? (
           <Table>
@@ -398,7 +430,9 @@ export function EvaluationPage() {
                   <TableCell>{item.label}</TableCell>
                   <TableCell>{item.topK}</TableCell>
                   <TableCell>{item.minSimilarityScore ?? "-"}</TableCell>
-                  <TableCell>{item.rerankEnabled === undefined ? "-" : item.rerankEnabled ? "ON" : "OFF"}</TableCell>
+                  <TableCell>
+                    {item.rerankEnabled === undefined ? "-" : item.rerankEnabled ? "ON" : "OFF"}
+                  </TableCell>
                   <TableCell>{formatPercent(item.hitRate)}</TableCell>
                   <TableCell>{formatNumber(item.meanReciprocalRank, 3)}</TableCell>
                   <TableCell>{formatPercent(item.averageRecallAtK)}</TableCell>
@@ -408,7 +442,9 @@ export function EvaluationPage() {
             </TableBody>
           </Table>
         ) : (
-          <Typography color="text.secondary">比較実行を押すと、複数条件の評価結果を表示します。</Typography>
+          <Typography color="text.secondary">
+            比較実行を押すと、複数条件の評価結果を表示します。
+          </Typography>
         )}
       </SectionCard>
     </PageScaffold>

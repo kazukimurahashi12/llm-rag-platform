@@ -42,7 +42,12 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
     <form onSubmit={handleSubmit}>
       <Stack spacing={2.5}>
         {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
-        <TextField label="ユーザー名" value={username} onChange={(event) => setUsername(event.target.value)} required />
+        <TextField
+          label="ユーザー名"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          required
+        />
         <TextField
           label="パスワード"
           type="password"

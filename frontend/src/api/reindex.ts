@@ -2,9 +2,12 @@ import { apiClient } from "./client";
 import { KnowledgeReindexJobAcceptedResponse, KnowledgeReindexJobListResponse } from "../types/api";
 
 export async function fetchReindexJobs(params: Record<string, string | number | undefined>) {
-  const response = await apiClient.get<KnowledgeReindexJobListResponse>("/v1/knowledge-documents/reindex-jobs", {
-    params,
-  });
+  const response = await apiClient.get<KnowledgeReindexJobListResponse>(
+    "/v1/knowledge-documents/reindex-jobs",
+    {
+      params,
+    },
+  );
   return response.data;
 }
 
