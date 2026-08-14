@@ -60,7 +60,7 @@ func validateKnowledgeFields(title string, content string, aceCategory string, a
 	switch aceCategory {
 	case "ABILITY", "CULTURE", "EXPECTATION":
 	default:
-		details = append(details, fmt.Sprintf("aceCategory: must be one of [ABILITY, CULTURE, EXPECTATION]"))
+		details = append(details, "aceCategory: must be one of [ABILITY, CULTURE, EXPECTATION]")
 	}
 	if allowedUsernames != nil {
 		for index, username := range *allowedUsernames {

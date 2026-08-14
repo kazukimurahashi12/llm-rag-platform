@@ -77,7 +77,9 @@ func (r *Repository) List(ctx context.Context, limit int, offset int, model stri
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	items := make([]LogRecord, 0)
 	for rows.Next() {

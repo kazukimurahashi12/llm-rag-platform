@@ -72,7 +72,9 @@ func (r *Repository) ListDocuments(ctx context.Context) ([]DocumentRecord, error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	documents := make([]DocumentRecord, 0)
 	for rows.Next() {
@@ -310,7 +312,9 @@ func (r *Repository) FindAllChunks(ctx context.Context) ([]ChunkRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	chunks := make([]ChunkRecord, 0)
 	for rows.Next() {
@@ -361,12 +365,11 @@ func (r *Repository) FindNearestChunks(ctx context.Context, vectorLiteral string
 		limit $2
 	`, vectorLiteral, limit)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "ivfflat") {
-			// probes 設定が不要な環境でも検索は継続できるため、通常クエリ結果だけ返す。
-		}
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	matches := make([]VectorMatch, 0)
 	for rows.Next() {

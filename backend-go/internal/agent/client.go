@@ -66,7 +66,9 @@ func (c *Client) RunTask(ctx context.Context, request api.AgentTaskRequest, auth
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach agent runtime: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {

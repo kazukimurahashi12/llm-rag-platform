@@ -33,7 +33,7 @@ echo "== Backend strong verification =="
 
   if command -v golangci-lint >/dev/null 2>&1; then
     set +e
-    golangci_output="$(GOCACHE="$(go_cache_dir)" golangci-lint run ./... 2>&1)"
+    golangci_output="$(GOCACHE="$(go_cache_dir)" GOLANGCI_LINT_CACHE="$(golangci_cache_dir)" golangci-lint run ./... 2>&1)"
     golangci_status=$?
     set -e
     if [ "$golangci_status" -ne 0 ]; then

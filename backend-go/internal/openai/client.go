@@ -181,7 +181,9 @@ func (c *Client) doChat(ctx context.Context, model string, instructions string, 
 			Cause:   err,
 		}
 	}
-	defer response.Body.Close()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
@@ -283,7 +285,9 @@ func (c *Client) doEmbed(ctx context.Context, model string, input string, expect
 		}
 		return nil, &Error{Kind: ErrorKindTransport, Message: "failed to reach openai embeddings api", Cause: err}
 	}
-	defer response.Body.Close()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {

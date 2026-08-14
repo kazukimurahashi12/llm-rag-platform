@@ -189,7 +189,9 @@ func (s *ReindexJobService) ListJobs(limit int, offset int) *api.KnowledgeReinde
 			TotalCount: 0,
 		}
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	items := make([]api.KnowledgeReindexJobStatusResponse, 0)
 	for rows.Next() {

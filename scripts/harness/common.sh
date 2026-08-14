@@ -12,6 +12,13 @@ go_cache_dir() {
   printf '%s\n' "$root/.cache/go-build"
 }
 
+golangci_cache_dir() {
+  local root
+  root="$(repo_root)"
+  mkdir -p "$root/.cache/golangci-lint"
+  printf '%s\n' "$root/.cache/golangci-lint"
+}
+
 changed_files() {
   git status --porcelain=v1 | sed -E 's/^...//' | sed -E 's/^.* -> //'
 }
